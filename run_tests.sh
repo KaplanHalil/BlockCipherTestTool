@@ -32,4 +32,4 @@ echo "Running Correlation Tests"
 #mv -t Results/ AvalCorrTests/aval_mk-rc.png AvalCorrTests/aval_mk-rk.png AvalCorrTests/aval_p-rc.png AvalCorrTests/corr_mk-rk.png AvalCorrTests/corr_p-rc.png AvalCorrTests/corr_mk-rc.png AvalCorrTests/corr_rk-rk.png AvalCorrTests/corr_rc-rc.png
 
 echo "Running S-box Tests"
-sage SboxTests/sboxTests.sage > Results/sbox_tests.txt
+sage SboxTest/sboxTest.sage > Results/sbox_tests.txt
