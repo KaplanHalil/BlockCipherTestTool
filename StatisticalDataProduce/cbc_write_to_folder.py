@@ -1,28 +1,34 @@
 import utils
-#import cipher
-import AES_256 as cipher
+import sys
+import os
+# Add the Algorithm directory to the Python path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'Algorithm'))
+
+# Now you can import Alg from the Algorithm directory
+import Alg as cipher
 
 
-block_size = 16  #bytes
 ciphertext_size= 8 # Mb
 
 
 # makes CBC mode encryption and writes ciphertext to the file
 def cbc_encrypt_write(plaintext, key, iv):
 
+    rc=[[0]*ciphertext_size]*cipher.num_rounds # Define empty list to store round cipertexts
+
     # Encrypt and write the plaintext in chunks
     with open("ciphertext.hex", "wb") as f:
         previous_block = iv
-        for i in range(0, len(plaintext), block_size):
-            block = plaintext[i:i + block_size]
-            if len(block) < block_size:
-                block += [0] * (block_size - len(block))
+        for i in range(0, len(plaintext), cipher.plaintext_size):
+            block = plaintext[i:i + cipher.plaintext_size]
+            if len(block) < cipher.plaintext_size:
+                block += [0] * (cipher.plaintext_size - len(block))
             xor_result = utils.xor_blocks(block, previous_block)
-            encrypted_block = cipher.encrypt(xor_result, key)
+            encrypted_block = cipher.encrypt(xor_result, key,rc)
             f.write(bytes(encrypted_block))
             previous_block = encrypted_block
             # Print progress
-            progress = (i + block_size) / len(plaintext) * 100
+            progress = (i + cipher.plaintext_size) / len(plaintext) * 100
             print(f"Ciphertext progress: {progress:.2f}%", end='\r')
 
     

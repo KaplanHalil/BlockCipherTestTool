@@ -33,3 +33,6 @@ echo "Running Correlation Tests"
 
 echo "Running S-box Tests"
 sage SboxTest/sboxTest.sage > Results/sbox_tests.txt
+
+#echo "Producing ciphertexts fo statistical tests"
+#pypy3 StatisticalDataProduce/cbc_write_to_folder.py
