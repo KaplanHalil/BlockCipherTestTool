@@ -10,15 +10,16 @@ Buna göre convert_2d_list fonksiyonunda 255 beyaz 0 siyah olacak şekilde pikse
 """
 
 from PIL import Image
-import utils
 import sys
 import os
 
 # Add the Algorithm directory to the Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'Algorithm'))
+# Add the utils directory to the Python path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
 
-# Now you can import Alg from the Algorithm directory
 import Alg as cipher
+import utils
 import time
 
 # takes 2d list and converts it to 1d list
