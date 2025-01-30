@@ -1,14 +1,15 @@
-import utils
+
 import sys
 import os
 # Add the Algorithm directory to the Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'Algorithm'))
+# Add the Algorithm directory to the Python path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
 
-# Now you can import Alg from the Algorithm directory
 import Alg as cipher
+import utils
 
-
-ciphertext_size= 8 # Mb
+ciphertext_size= 32 # Mb
 
 
 # makes CBC mode encryption and writes ciphertext to the file
@@ -42,7 +43,5 @@ if __name__ == "__main__":
     #plaintext = [(i % 256) for i in range(ciphertext_size * 1024 * 1024)]
     # Choose plaintext
     plaintext = [0]*(ciphertext_size * 1024 * 1024)
-
-    print("---Plaintext is ready---")
 
     cbc_encrypt_write(plaintext,key,iv)
