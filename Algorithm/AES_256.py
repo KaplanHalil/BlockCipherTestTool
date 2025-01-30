@@ -1,3 +1,7 @@
+import sys
+import os
+# Add the utils directory to the Python path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
 import utils
 
 plaintext_size = 16  #bytes
