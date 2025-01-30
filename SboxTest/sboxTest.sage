@@ -136,3 +136,4 @@ pretty_table(S.difference_distribution_table(), "Difference Distribution Table (
 pretty_table(S.linear_approximation_table(), "Linear Approximation Table (LAT)")
 pretty_table(S.boomerang_connectivity_table(), "Boomerang Connectivity Table (BCT)")
 pretty_table(S.autocorrelation_table(), "Autocorrelation Table (ACT)")
+
