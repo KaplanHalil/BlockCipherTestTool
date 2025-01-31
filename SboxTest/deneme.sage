@@ -1,12 +1,21 @@
 import sys
 import os
+import matplotlib.pyplot as plt
+
 # Add the Algorithm directory to the Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'Algorithm'))
 
 # Now you can import Alg from the Algorithm directory
 import Alg as cipher
 
-def save_pollock(cipher.SBOX,
+sbox_hex = cipher.SBOX
+
+# Convert to decimal
+SBOX_DEC = [int(x) for x in sbox_hex]
+
+S = SBox(SBOX_DEC)
+
+def save_pollock(mat,
                  color_scheme="CMRmap_r",
                  file_name="pollock",
                  vmin=0,
@@ -19,15 +28,15 @@ def save_pollock(cipher.SBOX,
     import matplotlib.pyplot as plt
     fig, p = plt.subplots(figsize=(15,15))
     if isinstance(mat, list):
-        abs_mat = [[abs(mat[i][j]) for j in xrange(0, len(mat[0]))]
-                   for i in xrange(0, len(mat))]
+        abs_mat = [[abs(mat[i][j]) for j in range(0, len(mat[0]))]
+                   for i in range(0, len(mat))]
     else:
-        abs_mat = [[abs(mat[i][j]) for j in xrange(0, mat.ncols())]
-                   for i in xrange(0, mat.nrows())]
+        abs_mat = [[abs(mat[i][j]) for j in range(0, mat.ncols())]
+                   for i in range(0, mat.nrows())]
     axes = p.imshow(
         abs_mat,
         interpolation="none",
-        cmap=plt.cm.get_cmap(color_scheme, 100),
+        cmap = plt.colormaps.get_cmap(color_scheme).resampled(int(_sage_const_100))
         vmin=vmin,
         vmax=vmax,
     )
@@ -43,3 +52,14 @@ def save_pollock(cipher.SBOX,
     else:
         name_base = folder + "/{}." + file_type
     fig.savefig(name_base.format(file_name))
+
+def to_2d_list(lst, sublist_size):
+    if sublist_size <= 0:
+        raise ValueError("Sublist size must be greater than zero.")
+    
+    return [lst[i:i + sublist_size] for i in range(0, len(lst), sublist_size)]
+
+if __name__ == "__main__":
+    
+    
+    save_pollock(S.difference_distribution_table())
