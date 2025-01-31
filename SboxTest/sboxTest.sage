@@ -20,6 +20,16 @@ def is_one_to_one(sbox):
     unique_outputs = set(sbox)
     return len(unique_outputs) == len(sbox)
 
+# Convert the S-box to a permutation (adjusting for 0-based to 1-based indexing)
+perm = Permutation([x + 1 for x in SBOX_DEC])
+
+# Get the cycles of the permutation
+cycles = perm.to_cycles()
+
+# Print the number of cycles and their lengths
+print("Number of cycles and cycle lengths:", len(cycles),",", [len(cycle) for cycle in cycles])
+
+
 print("S is 1-1:", is_one_to_one(SBOX_DEC))  
 # Purpose: Verify that every input maps to a unique output.
 # Significance: A bijective S-box is necessary for ensuring reversibility in block cipher operations.
@@ -58,16 +68,10 @@ print("S is bent: ", S.is_bent())
 print("S is almost bent: ", S.is_almost_bent())
 
 # 6. Check if the S-box is an involution (S(S(x)) = x)
-print("S has an inverse: ", S.is_involution())  
+print("S is involution: ", S.is_involution())  
 # Purpose: Verify if encryption and decryption use the same S-box.
 # Significance: Involutory S-boxes simplify implementation.
 # Expected: Depends on the S-box design.
-
-# 7. Check if the S-box is plateaued
-print("S is plateaued: ", S.is_plateaued())  
-# Purpose: Check if the Walsh spectrum takes on few distinct values.
-# Significance: Plateaued S-boxes may have desirable cryptographic properties.
-# Expected: True for some S-boxes.
 
 
 print("Nonlinearity of S:", S.nonlinearity())
@@ -130,6 +134,7 @@ def pretty_table(matrix, label, max_size=16):
     if nrows > max_size:
         print("...")
 
+print("Cycles in S :", cycles)
 
 # Display formatted tables
 pretty_table(S.difference_distribution_table(), "Difference Distribution Table (DDT)")
