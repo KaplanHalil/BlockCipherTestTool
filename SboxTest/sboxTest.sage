@@ -142,3 +142,6 @@ pretty_table(S.linear_approximation_table(), "Linear Approximation Table (LAT)")
 pretty_table(S.boomerang_connectivity_table(), "Boomerang Connectivity Table (BCT)")
 pretty_table(S.autocorrelation_table(), "Autocorrelation Table (ACT)")
 
+
+f2 = S.component_function(3)
+print(f2.algebraic_normal_form() )        
