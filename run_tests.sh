@@ -37,13 +37,13 @@ sage SboxTest/sboxTest.sage > Results/sbox_tests.txt &
 
 # Data for Statistical Tests
 
-echo "Producing ciphertexts for statistical tests"
+echo "Producing cipher-texts for statistical tests"
 pypy3 StatisticalDataProduce/cbc_write_to_folder.py 
 
 # Move the drawings to the Results folder
 mv -t Results/ aval_mk-rc.png aval_mk-rk.png aval_p-rc.png corr_mk-rk.png corr_p-rc.png corr_mk-rc.png corr_rk-rk.png corr_rc-rc.png
 
-# Move the produced ciphertexts to the Results folder
+# Move the produced cipher-texts to the Results folder
 mv ciphertext.hex Results/
 
 echo "### Test is done ###"
