@@ -46,4 +46,7 @@ mv -t Results/ aval_mk-rc.png aval_mk-rk.png aval_p-rc.png corr_mk-rk.png corr_p
 # Move the produced cipher-texts to the Results folder
 mv ciphertext.hex Results/
 
+# Move the produced DDT and BCT drawings to the Results folder
+mv -t Results/ BCT.png DDT.png 
+
 echo "### Test is done ###"
