@@ -1,5 +1,7 @@
-from PIL import Image
-
+import sys
+import os
+# Add the utils directory to the Python path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
 # Add the Algorithm directory to the Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'Algorithm'))
 
@@ -7,6 +9,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'Algorithm'))
 import Alg as cipher
 from sage.crypto.sbox import SBox
 from PIL import Image
+import utils
 
 sbox_hex = cipher.SBOX
 
@@ -152,39 +155,18 @@ pretty_table(S.autocorrelation_table(), "Autocorrelation Table (ACT)")
 
 #print(S.difference_distribution_table())
 
-def create_image_from_2d_list(data):
-    width, height = len(data[0]), len(data)
-    img = Image.new("RGB", (width, height), "black")
-    pixels = img.load()
-    
-    color_map = {
-        0: (255, 255, 255),  # White
-        2: (0, 153, 76),      # Green
-        4: (204, 204, 0),      # Yellow
-        6: (255, 128, 0),    # Orange
-        8: (255, 0, 0),      # Red
-        10: (204, 0, 0),      # Red
-        12: (153, 0, 0),      # Red
-        16: (139, 69, 19)     # Brown
-    }
-    
-    for y in range(height):
-        for x in range(width):
-            pixels[x, y] = color_map.get(data[y][x], (0, 0, 0))  # Default to black if value not in map
-    
-    return img
 
 
 
 # Convert SageMath matrix to a list of lists
 data = [list(row) for row in S.difference_distribution_table().rows()]
-img = create_image_from_2d_list(data)
+img = utils.create_image_from_2d_list(data)
 #img.show()
 img.save("DDT.png")
 
 # Convert SageMath matrix to a list of lists
 data = [list(row) for row in S.boomerang_connectivity_table().rows()]
-img = create_image_from_2d_list(data)
+img = utils.create_image_from_2d_list(data)
 #img.show()
 img.save("BCT.png")
 

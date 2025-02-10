@@ -1,3 +1,5 @@
+from PIL import Image
+
 # Takes string of form "0x0001..." converts int list of form [0,1]
 def str_to_int_array(hex_str):
     # Remove the '0x' prefix if it exists
@@ -65,6 +67,29 @@ def sum_2d_lists(list1, list2):
 # Convert 2D list to 1D list
 def convert_2d_list_to_1d(two_d_list):
     return [item for sublist in two_d_list for item in sublist]
+
+
+def create_image_from_2d_list(data):
+    width, height = len(data[0]), len(data)
+    img = Image.new("RGB", (width, height), "black")
+    pixels = img.load()
+    
+    color_map = {
+        0: (255, 255, 255),  # White
+        2: (0, 153, 76),      # Green
+        4: (204, 204, 0),      # Yellow
+        6: (255, 128, 0),    # Orange
+        8: (255, 0, 0),      # Red
+        10: (204, 0, 0),      # Red
+        12: (153, 0, 0),      # Red
+        16: (139, 69, 19)     # Brown
+    }
+    
+    for y in range(height):
+        for x in range(width):
+            pixels[x, y] = color_map.get(data[y][x], (0, 0, 0))  # Default to black if value not in map
+    
+    return img
 
 if __name__ == "__main__":
     unique_strings = [f"0x{''.join(f'{(i + j) % 256:02x}' for j in range(32))}" for i in range(10000)]
