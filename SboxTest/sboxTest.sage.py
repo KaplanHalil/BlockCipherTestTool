@@ -31,16 +31,6 @@ def is_one_to_one(sbox):
     unique_outputs = set(sbox)
     return len(unique_outputs) == len(sbox)
 
-# Convert the S-box to a permutation (adjusting for 0-based to 1-based indexing)
-perm = Permutation([x + _sage_const_1  for x in SBOX_DEC])
-
-# Get the cycles of the permutation
-cycles = perm.to_cycles()
-
-# Print the number of cycles and their lengths
-print("Number of cycles and cycle lengths:", len(cycles),",", [len(cycle) for cycle in cycles])
-
-
 print("S is 1-1:", is_one_to_one(SBOX_DEC))  
 # Purpose: Verify that every input maps to a unique output.
 # Significance: A bijective S-box is necessary for ensuring reversibility in block cipher operations.
@@ -123,6 +113,17 @@ print("Branch number of S:", S.differential_branch_number())
 # Significance: High branch number ensures good diffusion.
 # Expected: High value.
 
+# Convert the S-box to a permutation (adjusting for 0-based to 1-based indexing)
+perm = Permutation([x + _sage_const_1  for x in SBOX_DEC])
+
+# Get the cycles of the permutation
+cycles = perm.to_cycles()
+
+# Print the number of cycles and their lengths
+print("Number of cycles and cycle lengths:", len(cycles),",", [len(cycle) for cycle in cycles])
+
+print("Cycles in S :", cycles)
+
 # Helper function to display tables with detailed formatting
 def pretty_table(matrix, label, max_size=_sage_const_16 ):
     nrows, ncols = matrix.nrows(), matrix.ncols()
@@ -145,7 +146,7 @@ def pretty_table(matrix, label, max_size=_sage_const_16 ):
     if nrows > max_size:
         print("...")
 
-print("Cycles in S :", cycles)
+
 
 # Display formatted tables
 pretty_table(S.difference_distribution_table(), "Difference Distribution Table (DDT)")
