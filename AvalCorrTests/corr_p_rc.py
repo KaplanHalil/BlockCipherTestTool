@@ -2,7 +2,7 @@
 p-rc Corr Test
 
 Rasgele 1000 adet p alir ve her bir bitini tek tek değiştirip round çiktilaini hesaplar.
-Genel beklenti rc'deki her bit bitin 450-550 arasında değişmesidir.
+Genel beklenti rc'deki her bit bitin 450-550 arasinda plaintext'e eşit olmasidir değişmesidir.
 Buna göre convert_2d_list fonksiyonunda 255 beyaz 0 siyah olacak şekilde piksellere renk atar.
 Çikti olarak verdiği resimde sol taraf p bitleri üst raraf rc bitleri.
 
