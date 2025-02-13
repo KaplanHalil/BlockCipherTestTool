@@ -12,5 +12,5 @@ dmonom test eklenecek
 slender test eklenecek
 integral analiz testi eklenecek
 
-
+test vektörü doğruluma eklenecek.
 
