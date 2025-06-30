@@ -22,9 +22,11 @@ num_rounds = 31
 rc=[[0]*ciphertext_size]*num_rounds # Define empty list to store round cipertexts
 
 SBOX = [
-    0x63, 0x7c, 0x77, ...
+    0xC, 0x5, 0x6 0xB, 0x9, 0x0, 0xA, 0xD, 0x3, 0xE, 0xF, 0x8, 0x4, 0x7, 0x1, 0x2
 ]
 
+PERM = [0, 16, 32, 48, 1, 17, 33, 49, 2, 18, 34, 50, 3, 19, 35, 51, 4, 20, 36, 52, 5, 21, 37, 53, 6, 22, 38, 54, 7, 23, 39, 55,
+        8, 24, 40, 56, 9, 25, 41, 57, 10, 26, 42, 58, 11, 27, 43, 59, 12, 28, 44, 60, 13, 29, 45, 61, 14, 30, 46, 62, 15, 31, 47, 63]
 
 def sub_bytes(state):
     return [SBOX[byte] for byte in state]
@@ -32,9 +34,28 @@ def sub_bytes(state):
 def add_round_key(state, round_key):
     return [state[i] ^ round_key[i] for i in range(len(state))]
 
+def permute(state): 
+
+    bit_state=utils.int_list_to_bit_list(state)
+    for i in range(len(PERM)):
+        bit_state[i] = bit_state(PERM[i])
+
+    return utils.bit_list_to_int_list(bit_state)
+
 # Takes mk and returns round keys as 2d list
 def key_schedule(key):
-    
+    keybits = utils.int_list_to_bit_list(key)
+    round_keys2d = []
+    round_keys2d.append(keybits[:64])  # Initial key as the first round key
+    for i in range(round_key):
+        keybits=utils.rotate_left(keybits, 61)  # Rotate left by 61 bits
+        first4 = keybits[:4]
+        nibble = utils.bit_list_to_int_list(first4)
+        sbox_output = SBOX[nibble]
+        new_first4 = utils.int_to_bit_list(sbox_output, 4) 
+        keybits = new_first4 + keybits[4:]  # Replace first 4 bits with SBOX output
+        
+        round_keys2d.append(keybits[:64])  # Append the new round key
     return []
 
 def encrypt(block, key,rc):
@@ -58,8 +79,8 @@ def encrypt(block, key,rc):
 if __name__ == "__main__":
 
     
-    plaintext = utils.str_to_int_array("0x00112233445566778899aabbccddeeff")
-    key = utils.str_to_int_array("0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
+    plaintext = utils.str_to_int_array("0x0000000000000000")
+    key = utils.str_to_int_array("0x00000000000000000000")
     
     print("plaintext:",utils.int_to_hex(plaintext))
     print("key:",utils.int_to_hex(key))

@@ -91,7 +91,36 @@ def create_image_from_2d_list(data):
     
     return img
 
+def rotate_left(lst, nekadar):
+    """
+    Rotates a list 61 positions to the left (circularly).
+    
+    :param lst: List of elements (e.g., bits)
+    :return: Rotated list
+    """
+    n = len(lst)
+    return lst[nekadar % n:] + lst[:nekadar % n]
+
+
+def int_to_bit_list(n, width):
+    """
+    Converts an integer to a list of bits with the specified width.
+    
+    :param n: Integer value (non-negative)
+    :param width: Number of bits in the output list
+    :return: List[int] of 0s and 1s
+    """
+    if n < 0:
+        raise ValueError("Input must be a non-negative integer")
+    if n >= (1 << width):
+        raise ValueError(f"Integer too large to fit in {width} bits")
+    
+    return [int(b) for b in f"{n:0{width}b}"]
+
+
 if __name__ == "__main__":
-    unique_strings = [f"0x{''.join(f'{(i + j) % 256:02x}' for j in range(32))}" for i in range(10000)]
-    for string in unique_strings[:10]:
-        print(string)
+
+    data = list(range(80))  # Example: [0, 1, 2, ..., 79]
+    rotated = rotate_left(data,61)
+    print(rotated)
+
