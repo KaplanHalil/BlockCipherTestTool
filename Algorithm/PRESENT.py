@@ -54,9 +54,12 @@ def key_schedule(key):
         sbox_output = SBOX[nibble]
         new_first4 = utils.int_to_bit_list(sbox_output, 4) 
         keybits = new_first4 + keybits[4:]  # Replace first 4 bits with SBOX output
-        
+        bits5=keybits[60:65]  # Get bits 60 to 64
+        bits5_int = utils.bit_list_to_int_list(bits5)
+        bits5_int = bits5_int ^ (i + 1)  # XOR with round number (i+1)
+        keybits[60:65] = utils.int_to_bit_list(bits5_int, 5)
         round_keys2d.append(keybits[:64])  # Append the new round key
-    return []
+    return round_keys2d
 
 def encrypt(block, key,rc):
 
