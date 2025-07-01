@@ -56,6 +56,7 @@ def permute(state):
     return utils.bit_list_to_int_list(new_bit_state)
 
 
+
 def add_round_key(state, round_key):
     return [s ^ k for s, k in zip(state, round_key)]
 
@@ -90,11 +91,10 @@ def key_schedule(key):
 def encrypt(block, key, rc_store):
     round_keys = key_schedule(key)
     state = add_round_key(block, round_keys[0])
-    #rc_store[0] = state
 
     for round in range(1, num_rounds + 1):  # 1 to 31
         state = sub_bytes(state)
-        state = permute(state)
+        state = fast_permute(state)
         state = add_round_key(state, round_keys[round])
         rc_store[round-1] = state
 
