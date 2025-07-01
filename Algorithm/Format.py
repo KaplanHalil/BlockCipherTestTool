@@ -56,6 +56,14 @@ def encrypt(block, key,rc):
 
     return state
 
+# Returns round ciphertexts
+def return_rc(plaintext,key):
+
+    rc=[[0]*ciphertext_size]*num_rounds # Define empty list to store round cipertexts
+    encrypt(plaintext, key,rc)
+
+    return rc
+
 if __name__ == "__main__":
 
     

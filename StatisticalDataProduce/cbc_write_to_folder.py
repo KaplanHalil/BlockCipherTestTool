@@ -8,7 +8,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
 import Alg as cipher
 import utils
 
-ciphertext_size= 99 # Mb
+ciphertext_size= 25 # Mb
 
 
 # makes CBC mode encryption and writes ciphertext to the file

@@ -1,3 +1,11 @@
+"""
+İmplementasyonun test sistemi ile uyumlu olmasi için aşağidaki fonksiyonlar formatiyla implementasyonda olmali 
+
+state byte list leklinde olamali ve list üstünde islemler dönmeli [1,5,124,...,241] gibi
+
+key schedule fonksiyonu keyi alip round keyleri 2d list olarak dondurmeli [[1,5,124,...,241],[1,5,124,...,241],...] gibi
+"""
+
 import sys
 import os
 
@@ -9,6 +17,7 @@ plaintext_size = 8  # bytes
 ciphertext_size = 8  # bytes
 mkey_size = 10  # bytes
 round_key_size = 8  # bytes
+round_key = 32 # number of subkeys
 num_rounds = 31  # Number of full rounds (needs 32 round keys)
 
 # Round constants storage
@@ -81,20 +90,28 @@ def key_schedule(key):
 def encrypt(block, key, rc_store):
     round_keys = key_schedule(key)
     state = add_round_key(block, round_keys[0])
-    rc_store[0] = state[:]
+    #rc_store[0] = state
 
     for round in range(1, num_rounds + 1):  # 1 to 31
         state = sub_bytes(state)
         state = permute(state)
         state = add_round_key(state, round_keys[round])
-        rc_store[round] = state[:]
+        rc_store[round-1] = state
 
     return state
 
+# Returns round ciphertexts
+def return_rc(plaintext,key):
+
+    rc=[[0]*ciphertext_size]*(num_rounds) # Define empty list to store round cipertexts
+    encrypt(plaintext, key,rc)
+
+    return rc
+
 
 if __name__ == "__main__":
-    plaintext = utils.str_to_int_array("0xFFFFFFFFFFFFFFFF")
-    key = utils.str_to_int_array("0xFFFFFFFFFFFFFFFFFFFF")
+    plaintext = utils.str_to_int_array("0x0000000000000000")
+    key = utils.str_to_int_array("0x00000000000000000000")
 
     print("Plaintext: ", utils.int_to_hex(plaintext))
     print("Key:       ", utils.int_to_hex(key))
@@ -102,3 +119,5 @@ if __name__ == "__main__":
     ciphertext = encrypt(plaintext, key, rc)
 
     print("Ciphertext:", utils.int_to_hex(ciphertext))  
+
+    print(return_rc(plaintext, key))

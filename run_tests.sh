@@ -3,7 +3,7 @@
 # Before running change the environment to PyPy with "source myenv/bin/activate"
 
 # Change the algorithm name to the desired algorithm
-ALG=AES_256
+ALG=PRESENT80
 
 echo "from $ALG import *" > Algorithm/Alg.py
 
@@ -12,7 +12,7 @@ echo "### Test is starting ###"
 echo Algorithm: $ALG
 
 # Remove the previous results
-rm -f Results/*
+rm -f Results/*a
 
 # Avalance Tests
 
