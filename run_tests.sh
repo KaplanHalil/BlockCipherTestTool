@@ -3,7 +3,7 @@
 # Before running change the environment to PyPy with "source myenv/bin/activate"
 
 # Change the algorithm name to the desired algorithm
-ALG=PRESENT80
+ALG=AES_256
 
 echo "from $ALG import *" > Algorithm/Alg.py
 
