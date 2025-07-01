@@ -117,10 +117,39 @@ def int_to_bit_list(n, width):
     
     return [int(b) for b in f"{n:0{width}b}"]
 
+def bit_list_to_int(bits):
+    return int(''.join(map(str, bits)), 2)
+
+# int array alıp 4 bitlik nipple array veren fonk.
+def convert_to_nibble_array(int_array):
+    nibble_array = []
+    for val in int_array:
+        bits = int_to_bit_list(val, 8)  # Convert to 8-bit binary list
+        left_nibble = bit_list_to_int(bits[:4])   # First 4 bits
+        right_nibble = bit_list_to_int(bits[4:])  # Last 4 bits
+        nibble_array.append(left_nibble)
+        nibble_array.append(right_nibble)
+    return nibble_array
+
+# 4 bitlik nipple array alıp int array veren fonksiyon
+def nibbles_to_int_array(nibble_array):
+    if len(nibble_array) % 2 != 0:
+        raise ValueError("Nibble array length must be even.")
+    
+    int_array = []
+    for i in range(0, len(nibble_array), 2):
+        left = nibble_array[i]     # high 4 bits
+        right = nibble_array[i+1]  # low 4 bits
+        combined = (left << 4) | right
+        int_array.append(combined)
+    return int_array
+
+
 
 if __name__ == "__main__":
 
-    data = list(range(80))  # Example: [0, 1, 2, ..., 79]
-    rotated = rotate_left(data,61)
-    print(rotated)
+    nibbles = [10, 11, 3, 4, 15, 15]
+    reconstructed = nibbles_to_int_array(nibbles)
+    print("Nibbles:", nibbles)
+    print("Reconstructed ints:", reconstructed)
 
