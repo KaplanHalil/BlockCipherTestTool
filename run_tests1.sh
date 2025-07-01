@@ -17,18 +17,18 @@ rm -f Results/*
 # Avalance Tests
 
 echo "Running Avalanche Tests"
-pypy3 AvalCorrTests/aval_mk_rc.py & 
-pypy3 AvalCorrTests/aval_mk_rk.py & 
-pypy3 AvalCorrTests/aval_p_rc.py &
+python3 AvalCorrTests/aval_mk_rc.py & 
+python3 AvalCorrTests/aval_mk_rk.py & 
+python3 AvalCorrTests/aval_p_rc.py &
 
 # Correlation Tests
 
 echo "Running Correlation Tests"
-pypy3 AvalCorrTests/corr_rk_rk.py &
-pypy3 AvalCorrTests/corr_mk_rk.py &
-pypy3 AvalCorrTests/corr_p_rc.py &
-pypy3 AvalCorrTests/corr_mk_rc.py &
-pypy3 AvalCorrTests/corr_rc_rc.py &
+python3 AvalCorrTests/corr_rk_rk.py &
+python3 AvalCorrTests/corr_mk_rk.py &
+python3 AvalCorrTests/corr_p_rc.py &
+python3 AvalCorrTests/corr_mk_rc.py &
+python3 AvalCorrTests/corr_rc_rc.py &
 
 # S-box Tests
 
@@ -38,7 +38,7 @@ sage SboxTest/sboxTest.sage > Results/sbox_tests.txt &
 # Data for Statistical Tests
 
 echo "Producing cipher-texts for statistical tests"
-pypy3 StatisticalDataProduce/cbc_write_to_folder.py 
+python3 StatisticalDataProduce/cbc_write_to_folder.py 
 
 # Move the drawings to the Results folder
 mv -t Results/ aval_mk-rc.png aval_mk-rk.png aval_p-rc.png corr_mk-rk.png corr_p-rc.png corr_mk-rc.png corr_rk-rk.png corr_rc-rc.png
