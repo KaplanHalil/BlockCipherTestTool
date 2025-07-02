@@ -94,7 +94,7 @@ def encrypt(block, key, rc_store):
 
     for round in range(1, num_rounds + 1):  # 1 to 31
         state = sub_bytes(state)
-        state = fast_permute(state)
+        state = permute(state)
         state = add_round_key(state, round_keys[round])
         rc_store[round-1] = state
 

@@ -22,13 +22,17 @@ num_rounds = 14
 
 rc=[[0]*ciphertext_size]*num_rounds # Define empty list to store round cipertexts
 
-SBOX = [
-    0x63, 0x7c, 0x77, ...
-]
-
+SBOX = [0x63, 0x7c, 0x77, ...]
+PERM = [0, 16, 32, 48, 1, 17, 33, 49,...]
 
 def sub_bytes(state):
     return [SBOX[byte] for byte in state]
+
+def permute(state):
+    new_state = [0] * len(state)
+    for i in range(len(state)):
+        new_state[PERM[i]] = state[i]
+    return new_state
 
 def add_round_key(state, round_key):
     return [state[i] ^ round_key[i] for i in range(len(state))]
@@ -46,6 +50,8 @@ def encrypt(block, key,rc):
     for round in range(1, num_rounds):
         
         state = sub_bytes(state)
+        state = permute(state)
+        state = add_round_key(state, round_keys[round])
         
         rc[round-1]=state # Store round ciphertexts
             
