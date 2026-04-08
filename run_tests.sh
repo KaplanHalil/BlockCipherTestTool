@@ -1,10 +1,7 @@
 #!/bin/bash
 
-# Activate the PyPy environment
-source myenv/bin/activate
-
 # Change the algorithm name to the desired algorithm
-ALG=PRESENT80
+ALG=AES_256
 
 echo "from $ALG import *" > Algorithm/Alg.py
 
@@ -13,40 +10,35 @@ echo "### Test is starting ###"
 echo Algorithm: $ALG
 
 # Remove the previous results
-rm -f Results/*a
+rm -f Results/*
 
 # Avalance Tests
 
 echo "Running Avalanche Tests"
-myenv/bin/python AvalCorrTests/aval_mk_rc.py & 
-myenv/bin/python AvalCorrTests/aval_mk_rk.py & 
-myenv/bin/python AvalCorrTests/aval_p_rc.py &
-
-wait
+python3 AvalCorrTests/aval_mk_rc.py & 
+python3 AvalCorrTests/aval_mk_rk.py & 
+python3 AvalCorrTests/aval_p_rc.py &
 
 # Correlation Tests
 
 echo "Running Correlation Tests"
-myenv/bin/python AvalCorrTests/corr_rk_rk.py &
-myenv/bin/python AvalCorrTests/corr_mk_rk.py &
-myenv/bin/python AvalCorrTests/corr_p_rc.py &
-myenv/bin/python AvalCorrTests/corr_mk_rc.py &
-myenv/bin/python AvalCorrTests/corr_rc_rc.py &
-
-wait
+python3 AvalCorrTests/corr_rk_rk.py &
+python3 AvalCorrTests/corr_mk_rk.py &
+python3 AvalCorrTests/corr_p_rc.py &
+python3 AvalCorrTests/corr_mk_rc.py &
+python3 AvalCorrTests/corr_rc_rc.py &
 
 # S-box Tests
 
 echo "Running S-box Tests"
 sage SboxTest/sboxTest.sage > Results/sbox_tests.txt &
 
-wait
-
 # Data for Statistical Tests
 
 echo "Producing cipher-texts for statistical tests"
-myenv/bin/python StatisticalDataProduce/cbc_write_to_folder.py 
+python3 StatisticalDataProduce/cbc_write_to_folder.py 
 
+wait
 # Move the drawings to the Results folder
 mv -t Results/ aval_mk-rc.png aval_mk-rk.png aval_p-rc.png corr_mk-rk.png corr_p-rc.png corr_mk-rc.png corr_rk-rk.png corr_rc-rc.png
 
@@ -54,8 +46,6 @@ mv -t Results/ aval_mk-rc.png aval_mk-rk.png aval_p-rc.png corr_mk-rk.png corr_p
 mv ciphertext.hex Results/
 
 # Move the produced DDT and BCT drawings to the Results folder
-mv -t Results/ BCT.png DDT.png
-
-echo "### Test is done ###" 
+mv -t Results/ BCT.png DDT.png 
 
 echo "### Test is done ###"
