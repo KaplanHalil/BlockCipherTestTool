@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Before running change the environment to PyPy with "source myenv/bin/activate"
+# Activate the PyPy environment
+source myenv/bin/activate
 
 # Change the algorithm name to the desired algorithm
 ALG=PRESENT80
@@ -17,28 +18,34 @@ rm -f Results/*a
 # Avalance Tests
 
 echo "Running Avalanche Tests"
-pypy3 AvalCorrTests/aval_mk_rc.py & 
-pypy3 AvalCorrTests/aval_mk_rk.py & 
-pypy3 AvalCorrTests/aval_p_rc.py &
+myenv/bin/python AvalCorrTests/aval_mk_rc.py & 
+myenv/bin/python AvalCorrTests/aval_mk_rk.py & 
+myenv/bin/python AvalCorrTests/aval_p_rc.py &
+
+wait
 
 # Correlation Tests
 
 echo "Running Correlation Tests"
-pypy3 AvalCorrTests/corr_rk_rk.py &
-pypy3 AvalCorrTests/corr_mk_rk.py &
-pypy3 AvalCorrTests/corr_p_rc.py &
-pypy3 AvalCorrTests/corr_mk_rc.py &
-pypy3 AvalCorrTests/corr_rc_rc.py &
+myenv/bin/python AvalCorrTests/corr_rk_rk.py &
+myenv/bin/python AvalCorrTests/corr_mk_rk.py &
+myenv/bin/python AvalCorrTests/corr_p_rc.py &
+myenv/bin/python AvalCorrTests/corr_mk_rc.py &
+myenv/bin/python AvalCorrTests/corr_rc_rc.py &
+
+wait
 
 # S-box Tests
 
 echo "Running S-box Tests"
 sage SboxTest/sboxTest.sage > Results/sbox_tests.txt &
 
+wait
+
 # Data for Statistical Tests
 
 echo "Producing cipher-texts for statistical tests"
-pypy3 StatisticalDataProduce/cbc_write_to_folder.py 
+myenv/bin/python StatisticalDataProduce/cbc_write_to_folder.py 
 
 # Move the drawings to the Results folder
 mv -t Results/ aval_mk-rc.png aval_mk-rk.png aval_p-rc.png corr_mk-rk.png corr_p-rc.png corr_mk-rc.png corr_rk-rk.png corr_rc-rc.png
@@ -47,6 +54,8 @@ mv -t Results/ aval_mk-rc.png aval_mk-rk.png aval_p-rc.png corr_mk-rk.png corr_p
 mv ciphertext.hex Results/
 
 # Move the produced DDT and BCT drawings to the Results folder
-mv -t Results/ BCT.png DDT.png 
+mv -t Results/ BCT.png DDT.png
+
+echo "### Test is done ###" 
 
 echo "### Test is done ###"
