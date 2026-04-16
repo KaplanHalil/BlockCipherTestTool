@@ -15,28 +15,33 @@ rm -f Results/*
 # Avalance Tests
 
 echo "Running Avalanche Tests"
-python3 AvalCorrTests/aval_mk_rc.py & 
-python3 AvalCorrTests/aval_mk_rk.py & 
-python3 AvalCorrTests/aval_p_rc.py &
+#python3 AvalCorrTests/aval_mk_rc.py & 
+#python3 AvalCorrTests/aval_mk_rk.py & 
+#python3 AvalCorrTests/aval_p_rc.py &
 
 # Correlation Tests
 
 echo "Running Correlation Tests"
-python3 AvalCorrTests/corr_rk_rk.py &
-python3 AvalCorrTests/corr_mk_rk.py &
-python3 AvalCorrTests/corr_p_rc.py &
-python3 AvalCorrTests/corr_mk_rc.py &
-python3 AvalCorrTests/corr_rc_rc.py &
+#python3 AvalCorrTests/corr_rk_rk.py &
+#python3 AvalCorrTests/corr_mk_rk.py &
+#python3 AvalCorrTests/corr_p_rc.py &
+#python3 AvalCorrTests/corr_mk_rc.py &
+#python3 AvalCorrTests/corr_rc_rc.py &
 
 # S-box Tests
 
 echo "Running S-box Tests"
-sage SboxTest/sboxTest.sage > Results/sbox_tests.txt &
-
-# Data for Statistical Tests
+#sage SboxTest/sboxTest.sage > Results/sbox_tests.txt &
+# Data generation for statistical and interpolation tests
 
 echo "Producing cipher-texts for statistical tests"
-python3 StatisticalDataProduce/cbc_write_to_folder.py 
+python3 StatisticalDataProduce/DataGeneration/cbc_write_to_folder.py --size-mb 2 --skip-analysis
+
+echo "Running interpolasyon saldırısı direnç testi"
+python3 InterpolationTests/interpolation_attack_test.py --output Results/interpolation_attack_test.txt
+
+echo "Running combined statistical tests"
+python3 StatisticalDataProduce/Tests/ciphertext_analysis.py
 
 wait
 # Move the drawings to the Results folder
