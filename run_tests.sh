@@ -33,10 +33,10 @@ echo "Running S-box Tests"
 
 
 echo "Producing cipher-texts for statistical tests"
-python3 StatisticalDataProduce/DataGeneration/ctr_write_to_folder.py --size-mb 256 --workers 16 --skip-analysis --output Results/ciphertext.hex
+python3 StatisticalDataProduce/DataGeneration/ctr_write_to_folder.py --size-mb 20 --workers 16 --skip-analysis --output Results/ciphertext.hex
 
 echo "Running combined statistical tests"
-#python3 StatisticalDataProduce/Tests/ciphertext_analysis.py
+python3 StatisticalDataProduce/Tests/ciphertext_analysis.py --parallel
 
 echo "Running interpolation attack analysis"
 #python3 InterpolationTests/interpolation_attack_test.py --variable-byte 3 --sample-count 257 --parallel --workers 16 --output Results/interpolation_attack_test.txt

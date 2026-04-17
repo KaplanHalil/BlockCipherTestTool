@@ -187,8 +187,7 @@ def run_all_tests(data):
 def run_all_tests_parallel(data, max_workers=None):
     """
     Run all statistical tests in parallel for better performance.
-    Uses ThreadPoolExecutor for I/O bound tasks and lighter CPU tasks.
-    For heavy CPU-bound tasks, consider using ProcessPoolExecutor.
+    Uses ProcessPoolExecutor for CPU-bound tests.
     Returns a dictionary with all test results.
     """
     if isinstance(data, list):
@@ -197,24 +196,20 @@ def run_all_tests_parallel(data, max_workers=None):
     if max_workers is None:
         max_workers = min(multiprocessing.cpu_count(), 6)  # Use up to 6 workers
     
-    # Define test functions that can run in parallel
     test_functions = {
-        'entropy_byte': lambda: calculate_entropy(data),
-        'entropy_bit': lambda: calculate_bit_entropy(data),
-        'chi_square': lambda: chi_square_test(data),
-        'byte_frequency': lambda: byte_frequency_analysis(data),
-        'bit_frequency': lambda: bit_frequency_analysis(data),
-        'autocorrelation': lambda: autocorrelation_analysis(data)
+        'entropy_byte': _entropy_byte_test,
+        'entropy_bit': _entropy_bit_test,
+        'chi_square': _chi_square_test_wrapper,
+        'byte_frequency': _byte_freq_test,
+        'bit_frequency': _bit_freq_test,
+        'autocorrelation': _autocorr_test,
     }
     
     results = {'data_length': len(data)}
     
-    # Use ThreadPoolExecutor for better compatibility and lower overhead
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all tasks
-        future_to_test = {executor.submit(func): test_name for test_name, func in test_functions.items()}
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+        future_to_test = {executor.submit(func, data): test_name for test_name, func in test_functions.items()}
         
-        # Collect results as they complete
         for future in concurrent.futures.as_completed(future_to_test):
             test_name = future_to_test[future]
             try:

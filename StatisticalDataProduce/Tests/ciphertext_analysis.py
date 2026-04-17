@@ -118,7 +118,7 @@ def main():
     
     parser = argparse.ArgumentParser(description='Ciphertext Statistical Analysis Tool')
     parser.add_argument('--parallel', action='store_true', help='Run tests in parallel for better performance')
-    parser.add_argument('--workers', type=int, default=None, help='Number of worker threads for parallel execution')
+    parser.add_argument('--workers', type=int, default=None, help='Number of worker processes for parallel execution')
     
     args = parser.parse_args()
     
