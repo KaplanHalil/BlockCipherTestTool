@@ -122,7 +122,7 @@ def main():
     
     args = parser.parse_args()
     
-    ciphertext_file = "ciphertext.hex"
+    ciphertext_file = "Results/ciphertext.hex"
     
     if not os.path.exists(ciphertext_file):
         print(f"Error: {ciphertext_file} not found!")

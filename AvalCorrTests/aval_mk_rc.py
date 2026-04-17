@@ -22,6 +22,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
 import Alg as cipher
 import utils
 
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+results_dir = os.path.join(root_dir, 'Results')
+os.makedirs(results_dir, exist_ok=True)
 
 
 # takes 2d list and converts it to 1d list
@@ -100,7 +103,7 @@ if __name__ == "__main__":
                pixels[j,i] = (draw_list[j]) # set the colour accordingly
         
 
-    img.save("aval_mk-rc.png")
+    img.save(os.path.join(results_dir, "aval_mk-rc.png"))
     b=time.time()
     print("Time of aval_mk-rc: ",(b-a)/60,"minutes")
 

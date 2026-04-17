@@ -22,6 +22,10 @@ import Alg as cipher
 import utils
 import time
 
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+results_dir = os.path.join(root_dir, 'Results')
+os.makedirs(results_dir, exist_ok=True)
+
 # takes 2d list and converts it to 1d list
 def convert_2d_list(input_list):
     def convert_value(value):
@@ -90,7 +94,7 @@ if __name__ == "__main__":
             pixels[j,i] = (draw_list[j]) # set the colour accordingly
             
 
-    img.save("corr_rk-rk.png")
+    img.save(os.path.join(results_dir, "corr_rk-rk.png"))
     b=time.time()
     print("Time of corr rk-rk: ",(b-a)/60," minutes")
 

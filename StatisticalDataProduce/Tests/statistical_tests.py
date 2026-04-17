@@ -432,7 +432,7 @@ def write_results_to_file(text, filepath=RESULT_FILE):
 
 
 def main():
-    ciphertext_file = "ciphertext.hex"
+    ciphertext_file = "Results/ciphertext.hex"
     if not os.path.exists(ciphertext_file):
         print(f"Error: {ciphertext_file} not found. Generate ciphertext first.")
         return

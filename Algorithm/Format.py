@@ -4,8 +4,9 @@
 
 state byte list leklinde olamali ve list üstünde islemler dönmeli [1,5,124,...,241] gibi
 
-key schedule fonksiyonu keyi alip round keyleri 2d list olarak dondurmeli [[1,5,124,...,241],[1,5,124,...,241],...] gibi
+key schedule fonksiyonu anahtarı alip round keyleri 2d list olarak dondurmeli [[1,5,124,...,241],[1,5,124,...,241],...] gibi
 
+e
 """
 import sys
 import os

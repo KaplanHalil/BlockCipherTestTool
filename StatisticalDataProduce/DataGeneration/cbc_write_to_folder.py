@@ -18,7 +18,8 @@ def xor_bytes(a, b):
     return bytes(x ^ y for x, y in zip(a, b))
 
 
-def cbc_encrypt_write(plaintext, key, iv, output_file="ciphertext.hex", verbose=True):
+def cbc_encrypt_write(plaintext, key, iv, output_file="Results/ciphertext.hex", verbose=True):
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
     block_size = cipher.plaintext_size
     rc = [[0] * cipher.ciphertext_size for _ in range(cipher.num_rounds)]
     ciphertext = bytearray()
@@ -55,7 +56,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Fast CBC ciphertext generation for statistical tests")
     parser.add_argument("--size-mb", type=int, default=4,
                         help="Ciphertext size in MiB (default: 4)")
-    parser.add_argument("--output", default="ciphertext.hex",
+    parser.add_argument("--output", default="Results/ciphertext.hex",
                         help="Output ciphertext filename")
     parser.add_argument("--skip-analysis", action="store_true",
                         help="Only generate ciphertext and skip running statistical tests")

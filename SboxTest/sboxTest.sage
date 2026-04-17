@@ -11,6 +11,10 @@ from sage.crypto.sbox import SBox
 from PIL import Image
 import utils
 
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+results_dir = os.path.join(root_dir, 'Results')
+os.makedirs(results_dir, exist_ok=True)
+
 sbox_hex = cipher.SBOX
 
 # Convert to decimal
@@ -163,11 +167,11 @@ pretty_table(S.autocorrelation_table(), "Autocorrelation Table (ACT)")
 data = [list(row) for row in S.difference_distribution_table().rows()]
 img = utils.create_image_from_2d_list(data)
 #img.show()
-img.save("DDT.png")
+img.save(os.path.join(results_dir, "DDT.png"))
 
 # Convert SageMath matrix to a list of lists
 data = [list(row) for row in S.boomerang_connectivity_table().rows()]
 img = utils.create_image_from_2d_list(data)
 #img.show()
-img.save("BCT.png")
+img.save(os.path.join(results_dir, "BCT.png"))
 

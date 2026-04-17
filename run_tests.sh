@@ -28,29 +28,19 @@ echo "Running Correlation Tests"
 #python3 AvalCorrTests/corr_mk_rc.py &
 #python3 AvalCorrTests/corr_rc_rc.py &
 
-# S-box Tests
-
 echo "Running S-box Tests"
 #sage SboxTest/sboxTest.sage > Results/sbox_tests.txt &
-# Data generation for statistical and interpolation tests
+
 
 echo "Producing cipher-texts for statistical tests"
-python3 StatisticalDataProduce/DataGeneration/cbc_write_to_folder.py --size-mb 2 --skip-analysis
-
-echo "Running interpolasyon saldırısı direnç testi"
-python3 InterpolationTests/interpolation_attack_test.py --output Results/interpolation_attack_test.txt
+#python3 StatisticalDataProduce/DataGeneration/cbc_write_to_folder.py --size-mb 2 --skip-analysis --output Results/ciphertext.hex
 
 echo "Running combined statistical tests"
-python3 StatisticalDataProduce/Tests/ciphertext_analysis.py
+#python3 StatisticalDataProduce/Tests/ciphertext_analysis.py
+
+echo "Running interpolation attack analysis"
+python3 InterpolationTests/interpolation_attack_test.py --variable-byte 3 --sample-count 60 --output Results/interpolation_attack_test.txt
 
 wait
-# Move the drawings to the Results folder
-mv -t Results/ aval_mk-rc.png aval_mk-rk.png aval_p-rc.png corr_mk-rk.png corr_p-rc.png corr_mk-rc.png corr_rk-rk.png corr_rc-rc.png
-
-# Move the produced cipher-texts to the Results folder
-mv ciphertext.hex Results/
-
-# Move the produced DDT and BCT drawings to the Results folder
-mv -t Results/ BCT.png DDT.png 
 
 echo "### Test is done ###"

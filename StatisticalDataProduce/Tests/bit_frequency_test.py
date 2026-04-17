@@ -8,7 +8,7 @@ RESULT_FILE = "Results/bit_frequency_test.txt"
 
 
 def main():
-    ciphertext_file = "ciphertext.hex"
+    ciphertext_file = "Results/ciphertext.hex"
     if not os.path.exists(ciphertext_file):
         print(f"Error: {ciphertext_file} not found. Generate ciphertext first.")
         return

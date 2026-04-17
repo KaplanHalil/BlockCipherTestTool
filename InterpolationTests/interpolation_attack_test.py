@@ -1,15 +1,34 @@
 #!/usr/bin/env python3
-"""Interpolation resistance heuristic for block cipher output.
+"""Interpolation resistance analysis for block cipher round outputs.
 
-This test is not a formal attack, but it checks whether ciphertext bits
-can be represented by a low-degree Boolean polynomial in a chosen
-plaintext subspace. If many ciphertext bits admit low-degree ANF forms,
-that suggests the cipher may be more vulnerable to algebraic or
-interpolation-style analysis.
+This script performs a heuristic interpolation analysis of a block cipher.
+It is not a complete cryptanalytic attack, but it helps identify whether
+selected ciphertext output bytes can be modeled by low-degree polynomials
+from a chosen plaintext subspace.
+
+How it works:
+- Choose one plaintext byte position to vary over a random sample.
+- Fix the remaining plaintext bytes and the key to constant values.
+- Encrypt the block and collect the round outputs from the cipher's rc storage.
+- For each round output byte, build a mapping from the chosen plaintext byte
+  to the output byte value.
+- Use Lagrange interpolation over GF(2^8) to compute a polynomial for each
+  output byte.
+- Analyze polynomial degree and coefficient density for each round and byte.
+
+Why this matters:
+- Interpolation-style attacks attempt to model ciphertext bits as algebraic
+  polynomials of plaintext bits.
+- Lower polynomial degree and sparse coefficient support can make algebraic
+  analysis easier.
+
+Limitations:
+- This is a heuristic subspace analysis, not a complete attack.
+- Results depend on the chosen plaintext byte, the fixed values, and the
+  number of random samples.
 """
 
 import argparse
-import math
 import os
 import sys
 
@@ -20,41 +39,8 @@ import Alg as cipher
 RESULT_FILE = "Results/interpolation_attack_test.txt"
 
 
-def bytes_to_bit_list(data):
+def encode_byte_values(data):
     return [int(bit) for byte in data for bit in format(byte, '08b')]
-
-
-def compute_anf_coeffs(truth):
-    n = int(math.log2(len(truth)))
-    if 1 << n != len(truth):
-        raise ValueError("Truth table length must be a power of two")
-
-    coeffs = truth.copy()
-    size = len(coeffs)
-    for bit in range(n):
-        for mask in range(size):
-            if mask & (1 << bit):
-                coeffs[mask] ^= coeffs[mask ^ (1 << bit)]
-    return coeffs
-
-
-def anf_properties(truth):
-    coeffs = compute_anf_coeffs(truth)
-    nonzero = [mask for mask, value in enumerate(coeffs) if value]
-    degree = max((mask.bit_count() for mask in nonzero), default=0)
-    weight = len(nonzero)
-    sparsity = weight / len(coeffs)
-    return {
-        'degree': degree,
-        'weight': weight,
-        'sparsity': sparsity,
-    }
-
-
-def encrypt_block(plaintext, key):
-    rc = [[0] * cipher.ciphertext_size for _ in range(cipher.num_rounds)]
-    ciphertext = cipher.encrypt(list(plaintext), key, rc)
-    return bytes(ciphertext)
 
 
 def parse_variable_bytes(spec):
@@ -78,130 +64,227 @@ def build_histogram(values):
     return {k: histogram[k] for k in sorted(histogram)}
 
 
-def run_interpolation_test(variable_bytes, degree_threshold=3, sample_bits=8):
-    if sample_bits < 1 or sample_bits > 8:
-        raise ValueError("sample_bits must be between 1 and 8")
+def gf_add(a, b):
+    return a ^ b
 
-    for variable_byte in variable_bytes:
-        if variable_byte < 0 or variable_byte >= cipher.plaintext_size:
-            raise ValueError(f"variable_byte {variable_byte} is out of range")
 
-    sample_size = 1 << sample_bits
-    ciphertext_bits = cipher.ciphertext_size * 8
+def gf_mul(a, b):
+    result = 0
+    for _ in range(8):
+        if b & 1:
+            result ^= a
+        carry = a & 0x80
+        a = (a << 1) & 0xFF
+        if carry:
+            a ^= 0x1B
+        b >>= 1
+    return result
+
+
+def gf_pow(a, power):
+    result = 1
+    while power:
+        if power & 1:
+            result = gf_mul(result, a)
+        a = gf_mul(a, a)
+        power >>= 1
+    return result
+
+
+def gf_inv(a):
+    if a == 0:
+        raise ZeroDivisionError("GF inverse of zero")
+    return gf_pow(a, 254)
+
+
+def poly_add(a, b):
+    length = max(len(a), len(b))
+    result = [0] * length
+    for i in range(length):
+        if i < len(a):
+            result[i] ^= a[i]
+        if i < len(b):
+            result[i] ^= b[i]
+    return result
+
+
+def poly_mul(a, b):
+    result = [0] * (len(a) + len(b) - 1)
+    for i, ai in enumerate(a):
+        for j, bj in enumerate(b):
+            result[i + j] ^= gf_mul(ai, bj)
+    return result
+
+
+def lagrange_interpolate(points):
+    if not points:
+        return [0]
+    coeffs = [0]
+    for i, (xi, yi) in enumerate(points):
+        numerator = [1]
+        denominator = 1
+        for j, (xj, _) in enumerate(points):
+            if i == j:
+                continue
+            numerator = poly_mul(numerator, [gf_add(0, xj), 1])
+            denominator = gf_mul(denominator, gf_add(xi, xj))
+        factor = gf_mul(yi, gf_inv(denominator))
+        term = [gf_mul(c, factor) for c in numerator]
+        coeffs = poly_add(coeffs, term)
+    return coeffs
+
+
+def encrypt_block(plaintext, key):
+    rc = [[0] * cipher.ciphertext_size for _ in range(cipher.num_rounds)]
+    ciphertext = cipher.encrypt(list(plaintext), key, rc)
+    return bytes(ciphertext), rc
+
+
+def run_interpolation_test(variable_byte, sample_count=1000, fixed_byte_value=0):
+    if variable_byte < 0 or variable_byte >= cipher.plaintext_size:
+        raise ValueError(f"variable_byte {variable_byte} is out of range")
+
     key = [0] * cipher.mkey_size
-    results_by_byte = {}
+    fixed_plaintext = bytearray([fixed_byte_value] * cipher.plaintext_size)
+    random_values = __import__('random').sample(range(256), min(sample_count, 256))
 
-    for variable_byte in variable_bytes:
-        plaintext = bytearray(cipher.plaintext_size)
-        truth_tables = [[0] * sample_size for _ in range(ciphertext_bits)]
+    round_mappings = [ {byte_index: {} for byte_index in range(cipher.ciphertext_size)} for _ in range(cipher.num_rounds) ]
 
-        for value in range(sample_size):
-            plaintext[variable_byte] = value
-            ciphertext = encrypt_block(plaintext, key)
-            bit_list = bytes_to_bit_list(ciphertext)
-            for bit_index in range(ciphertext_bits):
-                truth_tables[bit_index][value] = bit_list[bit_index]
+    for value in random_values:
+        plaintext = fixed_plaintext.copy()
+        plaintext[variable_byte] = value
+        _, rc = encrypt_block(plaintext, key)
+        for round_index, round_output in enumerate(rc):
+            for byte_index, output_byte in enumerate(round_output):
+                round_mappings[round_index][byte_index][value] = output_byte
 
-        properties = [anf_properties(table) for table in truth_tables]
-        degrees = [p['degree'] for p in properties]
-        weights = [p['weight'] for p in properties]
-        low_degree_bits = [i for i, degree in enumerate(degrees) if degree <= degree_threshold]
-        degree_histogram = build_histogram(degrees)
-        weight_histogram = build_histogram(weights)
-
-        results_by_byte[variable_byte] = {
-            'ciphertext_bits': ciphertext_bits,
-            'sample_bits': sample_bits,
-            'degree_threshold': degree_threshold,
-            'max_degree': max(degrees),
-            'min_degree': min(degrees),
-            'avg_degree': sum(degrees) / len(degrees),
-            'low_degree_count': len(low_degree_bits),
-            'low_degree_ratio': len(low_degree_bits) / len(degrees),
-            'low_degree_bits': low_degree_bits[:20],
-            'degrees': degrees,
-            'degree_histogram': degree_histogram,
-            'avg_weight': sum(weights) / len(weights),
-            'min_weight': min(weights),
-            'max_weight': max(weights),
-            'weight_histogram': weight_histogram,
-        }
+    all_round_results = []
+    for round_index, byte_mappings in enumerate(round_mappings):
+        byte_stats = []
+        for byte_index in range(cipher.ciphertext_size):
+            mapping = byte_mappings[byte_index]
+            points = sorted(mapping.items())
+            if not points:
+                byte_stats.append({
+                    'byte_index': byte_index,
+                    'sample_size': 0,
+                    'max_degree': None,
+                    'weight': None,
+                    'sparsity': None,
+                    'degree_histogram': {},
+                    'coeff_histogram': {},
+                })
+                continue
+            coefficients = lagrange_interpolate(points)
+            nonzero = [(i, c) for i, c in enumerate(coefficients) if c != 0]
+            degree = max((i for i, _ in nonzero), default=0)
+            weight = len(nonzero)
+            sparsity = weight / len(coefficients)
+            degree_histogram = build_histogram([i for i, _ in nonzero])
+            coeff_histogram = build_histogram([c for _, c in nonzero])
+            byte_stats.append({
+                'byte_index': byte_index,
+                'sample_size': len(points),
+                'max_degree': degree,
+                'weight': weight,
+                'sparsity': sparsity,
+                'degree_histogram': degree_histogram,
+                'coeff_histogram': coeff_histogram,
+            })
+        all_round_results.append({
+            'round_index': round_index + 1,
+            'byte_stats': byte_stats,
+        })
 
     return {
-        'variable_bytes': variable_bytes,
-        'sample_bits': sample_bits,
-        'degree_threshold': degree_threshold,
-        'results_by_byte': results_by_byte,
+        'variable_byte': variable_byte,
+        'sample_count': len(random_values),
+        'round_results': all_round_results,
     }
 
 
-def format_histogram(histogram):
-    return ', '.join(f"{k}:{v}" for k, v in histogram.items())
+def format_histogram(histogram, max_line_length=90):
+    if not histogram:
+        return "None"
+
+    items = [f"{k}:{v}" for k, v in histogram.items()]
+    lines = []
+    current_line = ""
+    for item in items:
+        if current_line:
+            next_line = f"{current_line}, {item}"
+        else:
+            next_line = item
+
+        if len(next_line) > max_line_length and current_line:
+            lines.append(current_line)
+            current_line = item
+        else:
+            current_line = next_line
+
+    if current_line:
+        lines.append(current_line)
+
+    return "\n".join(lines)
 
 
 def format_results(results):
     lines = []
-    lines.append("INTERPOLATION ATTACK RESISTANCE HEURISTIC")
+    lines.append("INTERPOLATION ATTACK ANALYSIS")
     lines.append("========================================")
-    lines.append(f"Variable plaintext byte positions: {results['variable_bytes']}")
-    lines.append(f"Sample size per position: 2^{results['sample_bits']} = {1 << results['sample_bits']}")
-    lines.append(f"Degree threshold: {results['degree_threshold']}")
+    lines.append(f"Variable plaintext byte position: {results['variable_byte']}")
+    lines.append(f"Random sample count: {results['sample_count']}")
     lines.append("")
-    lines.append("Interpretation:")
-    lines.append("- Each tested plaintext byte is varied over the selected subspace.")
-    lines.append("- For each ciphertext output bit, we compute the Boolean ANF degree and coefficient weight.")
-    lines.append("- Bits with low algebraic degree are more likely to be exploitable by interpolation-style methods.")
+    lines.append("Test description:")
+    lines.append("- One plaintext byte is randomly varied over the selected subspace.")
+    lines.append("- The remaining plaintext bytes and the key remain fixed.")
+    lines.append("- The cipher is executed and round outputs are collected from rc.")
+    lines.append("- Each round output byte is treated as an 8-bit function of the selected input byte.")
+    lines.append("- For each output byte and round, we compute a Lagrange interpolating polynomial over GF(2^8).")
+    lines.append("- We analyze polynomial degree and coefficient sparsity for each round and byte.")
     lines.append("")
 
-    for variable_byte, byte_results in results['results_by_byte'].items():
-        lines.append(f"VARIABLE BYTE POSITION: {variable_byte}")
+    for round_result in results['round_results']:
+        lines.append(f"ROUND {round_result['round_index']}")
         lines.append("-" * 40)
-        lines.append(f"Ciphertext bits tested: {byte_results['ciphertext_bits']}")
-        lines.append(f"Max ANF degree observed: {byte_results['max_degree']}")
-        lines.append(f"Min ANF degree observed: {byte_results['min_degree']}")
-        lines.append(f"Average ANF degree: {byte_results['avg_degree']:.3f}")
-        lines.append(f"Low-degree bit count (<= threshold): {byte_results['low_degree_count']} ({byte_results['low_degree_ratio']:.2%})")
-        lines.append(f"Average ANF coefficient weight: {byte_results['avg_weight']:.1f} / {1 << results['sample_bits']}")
-        lines.append(f"ANF degree histogram: {format_histogram(byte_results['degree_histogram'])}")
-        lines.append(f"ANF weight histogram: {format_histogram(byte_results['weight_histogram'])}")
+        for byte_stat in round_result['byte_stats']:
+            lines.append(f"Output byte {byte_stat['byte_index']}:")
+            lines.append(f"  Samples used: {byte_stat['sample_size']}")
+            if byte_stat['sample_size'] == 0:
+                lines.append("  No samples available for this output byte.")
+                continue
+            lines.append(f"  Max polynomial degree: {byte_stat['max_degree']}")
+            lines.append(f"  Coefficient count: {byte_stat['weight']}")
+            lines.append(f"  Coefficient sparsity: {byte_stat['sparsity']:.3f}")
+            lines.append("  Degree histogram:")
+            lines.extend(f"    {line}" for line in format_histogram(byte_stat['degree_histogram']).split('\n'))
+            lines.append("  Coefficient histogram:")
+            lines.extend(f"    {line}" for line in format_histogram(byte_stat['coeff_histogram']).split('\n'))
         lines.append("")
 
-        if byte_results['low_degree_count'] == 0:
-            lines.append("Result: No output bits with degree at or below threshold were found for this byte.")
-        else:
-            lines.append(
-                f"Warning: {byte_results['low_degree_count']} ciphertext bit(s) had degree <= {byte_results['degree_threshold']}.")
-            lines.append(
-                "These output bits may be more vulnerable to low-degree interpolation analysis.")
-            lines.append(f"Low-degree bit sample: {byte_results['low_degree_bits']}")
-        lines.append("")
-
-    lines.append("Note: This is a heuristic subspace analysis and does not constitute a full cryptanalysis proof.")
-    lines.append("Consider testing multiple plaintext positions and larger subspaces for a more complete picture.")
+    lines.append("Summary:")
+    lines.append("- Lower max degree and lower coefficient density can indicate easier interpolation attack structure.")
+    lines.append("- Dense or high-degree polynomials suggest stronger algebraic complexity.")
+    lines.append("- This is a heuristic subspace analysis and does not replace a full cryptanalysis.")
     return "\n".join(lines) + "\n"
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Interpolation attack heuristic test")
-    parser.add_argument("--variable-bytes", default="0",
-                        help="Comma-separated plaintext byte positions or ranges to test, e.g. 0,1-3")
-    parser.add_argument("--degree-threshold", type=int, default=3,
-                        help="Degree threshold for low-degree output bits")
-    parser.add_argument("--sample-bits", type=int, default=8,
-                        help="Number of plaintext bits to vary (sample size = 2^sample_bits)")
+    parser = argparse.ArgumentParser(description="Interpolation attack test using random input subspace and round outputs")
+    parser.add_argument("--variable-byte", type=int, default=0,
+                        help="Plaintext byte position to vary (default 0)")
+    parser.add_argument("--sample-count", type=int, default=1000,
+                        help="Number of random values for the selected byte")
     parser.add_argument("--output", default=RESULT_FILE,
                         help="Output result file")
     args = parser.parse_args()
 
-    variable_bytes = parse_variable_bytes(args.variable_bytes)
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
-    results = run_interpolation_test(variable_bytes=variable_bytes,
-                                     degree_threshold=args.degree_threshold,
-                                     sample_bits=args.sample_bits)
+    results = run_interpolation_test(args.variable_byte, sample_count=args.sample_count)
     output = format_results(results)
     with open(args.output, 'w', encoding='utf-8') as out:
         out.write(output)
-    print(f"Interpolation attack heuristic saved to {args.output}")
+    print(f"Interpolation attack analysis saved to {args.output}")
 
 
 if __name__ == "__main__":
