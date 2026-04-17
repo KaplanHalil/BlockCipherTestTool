@@ -31,6 +31,7 @@ Limitations:
 import argparse
 import os
 import sys
+import concurrent.futures
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'Algorithm'))
 
@@ -140,7 +141,7 @@ def encrypt_block(plaintext, key):
     return bytes(ciphertext), rc
 
 
-def run_interpolation_test(variable_byte, sample_count=1000, fixed_byte_value=0):
+def run_interpolation_test(variable_byte, sample_count=1000, fixed_byte_value=0, parallel=False, workers=None):
     if variable_byte < 0 or variable_byte >= cipher.plaintext_size:
         raise ValueError(f"variable_byte {variable_byte} is out of range")
 
@@ -160,37 +161,7 @@ def run_interpolation_test(variable_byte, sample_count=1000, fixed_byte_value=0)
 
     all_round_results = []
     for round_index, byte_mappings in enumerate(round_mappings):
-        byte_stats = []
-        for byte_index in range(cipher.ciphertext_size):
-            mapping = byte_mappings[byte_index]
-            points = sorted(mapping.items())
-            if not points:
-                byte_stats.append({
-                    'byte_index': byte_index,
-                    'sample_size': 0,
-                    'max_degree': None,
-                    'weight': None,
-                    'sparsity': None,
-                    'degree_histogram': {},
-                    'coeff_histogram': {},
-                })
-                continue
-            coefficients = lagrange_interpolate(points)
-            nonzero = [(i, c) for i, c in enumerate(coefficients) if c != 0]
-            degree = max((i for i, _ in nonzero), default=0)
-            weight = len(nonzero)
-            sparsity = weight / len(coefficients)
-            degree_histogram = build_histogram([i for i, _ in nonzero])
-            coeff_histogram = build_histogram([c for _, c in nonzero])
-            byte_stats.append({
-                'byte_index': byte_index,
-                'sample_size': len(points),
-                'max_degree': degree,
-                'weight': weight,
-                'sparsity': sparsity,
-                'degree_histogram': degree_histogram,
-                'coeff_histogram': coeff_histogram,
-            })
+        byte_stats = compute_byte_stats_for_round(round_index, byte_mappings, parallel=parallel, workers=workers)
         all_round_results.append({
             'round_index': round_index + 1,
             'byte_stats': byte_stats,
@@ -226,6 +197,51 @@ def format_histogram(histogram, max_line_length=90):
         lines.append(current_line)
 
     return "\n".join(lines)
+
+
+def compute_byte_stat(task):
+    round_index, byte_index, mapping = task
+    if not mapping:
+        return {
+            'round_index': round_index,
+            'byte_index': byte_index,
+            'sample_size': 0,
+            'max_degree': None,
+            'weight': None,
+            'sparsity': None,
+            'degree_histogram': {},
+            'coeff_histogram': {},
+        }
+
+    points = sorted(mapping.items())
+    coefficients = lagrange_interpolate(points)
+    nonzero = [(i, c) for i, c in enumerate(coefficients) if c != 0]
+    degree = max((i for i, _ in nonzero), default=0)
+    weight = len(nonzero)
+    sparsity = weight / len(coefficients)
+
+    return {
+        'round_index': round_index,
+        'byte_index': byte_index,
+        'sample_size': len(points),
+        'max_degree': degree,
+        'weight': weight,
+        'sparsity': sparsity,
+        'degree_histogram': build_histogram([i for i, _ in nonzero]),
+        'coeff_histogram': build_histogram([c for _, c in nonzero]),
+    }
+
+
+def compute_byte_stats_for_round(round_index, byte_mappings, parallel=False, workers=None):
+    tasks = [(round_index, byte_index, byte_mappings[byte_index]) for byte_index in range(cipher.ciphertext_size)]
+
+    if parallel:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
+            byte_stats = list(executor.map(compute_byte_stat, tasks))
+    else:
+        byte_stats = [compute_byte_stat(task) for task in tasks]
+
+    return sorted(byte_stats, key=lambda item: item['byte_index'])
 
 
 def format_results(results):
@@ -275,12 +291,21 @@ def main():
                         help="Plaintext byte position to vary (default 0)")
     parser.add_argument("--sample-count", type=int, default=1000,
                         help="Number of random values for the selected byte")
+    parser.add_argument("--parallel", action='store_true',
+                        help="Compute interpolation stats in parallel using multiple processes")
+    parser.add_argument("--workers", type=int, default=None,
+                        help="Number of worker processes for parallel execution")
     parser.add_argument("--output", default=RESULT_FILE,
                         help="Output result file")
     args = parser.parse_args()
 
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
-    results = run_interpolation_test(args.variable_byte, sample_count=args.sample_count)
+    results = run_interpolation_test(
+        args.variable_byte,
+        sample_count=args.sample_count,
+        parallel=args.parallel,
+        workers=args.workers,
+    )
     output = format_results(results)
     with open(args.output, 'w', encoding='utf-8') as out:
         out.write(output)

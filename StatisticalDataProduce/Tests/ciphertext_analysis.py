@@ -126,7 +126,7 @@ def main():
     
     if not os.path.exists(ciphertext_file):
         print(f"Error: {ciphertext_file} not found!")
-        print("Please run cbc_write_to_folder.py first to generate ciphertext.")
+        print("Please run ctr_write_to_folder.py first to generate ciphertext.")
         return
     
     print("="*60)

@@ -7,7 +7,7 @@ This repository is designed to generate randomness and cryptanalysis tests for b
 The main workflow is executed through `run_tests.sh`. This script performs the following steps:
 
 - Loads the selected algorithm in `Algorithm/Alg.py`.
-- Generates ciphertext for testing with `StatisticalDataProduce/DataGeneration/cbc_write_to_folder.py`.
+- Generates ciphertext for testing with `StatisticalDataProduce/DataGeneration/ctr_write_to_folder.py`.
 - Runs interpolation resistance analysis with `InterpolationTests/interpolation_attack_test.py`.
 - Creates a statistical analysis report with `StatisticalDataProduce/Tests/ciphertext_analysis.py`.
 
