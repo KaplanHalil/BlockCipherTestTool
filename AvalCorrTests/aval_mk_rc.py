@@ -13,6 +13,8 @@ from PIL import Image
 import sys
 import os
 import time
+from multiprocessing import Pool
+import argparse
 
 # Add the Algorithm directory to the Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'Algorithm'))
@@ -25,6 +27,7 @@ import utils
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 results_dir = os.path.join(root_dir, 'Results')
 os.makedirs(results_dir, exist_ok=True)
+
 
 
 # takes 2d list and converts it to 1d list
@@ -55,58 +58,83 @@ def convert_2d_list(input_list):
 
     return [convert_value(value) for row in input_list for value in row]
 
-if __name__ == "__main__":
 
+def draw_round_lines(img, line_color=128):
+    """Draw vertical lines to distinguish between rounds"""
+    pixels = img.load()
+    round_width = cipher.ciphertext_size * 8
+    
+    for round_num in range(1, cipher.num_rounds):
+        x_pos = round_num * round_width
+        for y in range(img.size[1]):
+            pixels[x_pos, y] = line_color
+
+
+def process_bit_mk_rc(bit_index):
+    """Process a single bit index for mk-rc avalanche test"""
+    # Define empty list to store result
+    result = [[0 for _ in range(cipher.ciphertext_size*8)] for _ in range(cipher.num_rounds)]
+
+    # Generate 1000 unique keys
+    for k in range(1000):
+    
+        # Convert the counter `k` to a hexadecimal string with zero-padding
+        hex_value = ''.join(f"{(k + j) % 256:02x}" for j in range(cipher.mkey_size))
+        unique_key = f"0x{hex_value}"
+    
+        mkey = utils.str_to_int_array(unique_key)
+
+        mkey_bits=utils.int_list_to_bit_list(mkey)
+
+        plaintext = utils.str_to_int_array("0x00112233445566778899aabbccddeeff")
+
+        ciphertext=cipher.return_rc(plaintext,mkey) # round ciphertexts
+
+        ciphertext_bits = utils.convert_to_2d_bit_list(ciphertext)
+
+        # change value of bit
+        mkey_bits[bit_index] = mkey_bits[bit_index]^1
+        # Compute new mk and c
+        new_mkey = utils.bit_list_to_int_list(mkey_bits)
+        new_ciphertext=cipher.return_rc(plaintext,new_mkey)
+        new_ciphertext_bits = utils.convert_to_2d_bit_list(new_ciphertext)
+        # xor new and old rc to find different bits
+        fark=utils.xor_2d_lists(ciphertext_bits,new_ciphertext_bits)
+        # accumilate different bits
+        result=utils.sum_2d_lists(result,fark)
+
+    return bit_index, convert_2d_list(result)
+
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--workers', type=int, default=None, help='Number of worker processes')
+    args = parser.parse_args()
+    
     a = time.time()
+    
+    # Determine number of workers
+    num_workers = args.workers if args.workers else None
+    
     # PIL accesses images in Cartesian co-ordinates, so it is Image[columns, rows]
     img = Image.new( 'L', (cipher.ciphertext_size*8*cipher.num_rounds,cipher.mkey_size*8), "black") # create a new black image
     pixels = img.load() # create the pixel map
 
-    # for each bit in mk
-    for i in range(0,cipher.mkey_size*8):
+    # Process all bits in parallel
+    bit_indices = range(cipher.mkey_size * 8)
     
-        # Define empty list to store result
-        result = [[0 for _ in range(cipher.ciphertext_size*8)] for _ in range(cipher.num_rounds)]
-
-        # Generate 1000 unique keys
-        for k in range(1000):
-        
-            # Convert the counter `k` to a hexadecimal string with zero-padding
-            hex_value = ''.join(f"{(k + j) % 256:02x}" for j in range(cipher.mkey_size))
-            unique_key = f"0x{hex_value}"
+    with Pool(processes=num_workers) as pool:
+        results = pool.map(process_bit_mk_rc, bit_indices)
     
-            mkey = utils.str_to_int_array(unique_key)
-
-            mkey_bits=utils.int_list_to_bit_list(mkey)
-
-            plaintext = utils.str_to_int_array("0x00112233445566778899aabbccddeeff")
-
-            ciphertext=cipher.return_rc(plaintext,mkey) # round ciphertexts
-
-            ciphertext_bits = utils.convert_to_2d_bit_list(ciphertext)
-
-            # change value of bit
-            mkey_bits[i] = mkey_bits[i]^1
-            # Compute new mk and c
-            new_mkey = utils.bit_list_to_int_list(mkey_bits)
-            new_ciphertext=cipher.return_rc(plaintext,new_mkey)
-            new_ciphertext_bits = utils.convert_to_2d_bit_list(new_ciphertext)
-            # xor new and old rc to find different bits
-            fark=utils.xor_2d_lists(ciphertext_bits,new_ciphertext_bits)
-            # accumilate different bits
-            result=utils.sum_2d_lists(result,fark)
-
-        
-        draw_list = convert_2d_list(result)
-        
+    # Fill in the image with results
+    for bit_index, draw_list in results:
         for j in range(img.size[0]):    # For every row
-               pixels[j,i] = (draw_list[j]) # set the colour accordingly
-        
+            pixels[j, bit_index] = (draw_list[j]) # set the colour accordingly
+
+    # Draw vertical lines to distinguish rounds
+    draw_round_lines(img)
 
     img.save(os.path.join(results_dir, "aval_mk-rc.png"))
     b=time.time()
     print("Time of aval_mk-rc: ",(b-a)/60,"minutes")
-
-
-
-    

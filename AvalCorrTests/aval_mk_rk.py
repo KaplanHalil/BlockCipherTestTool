@@ -21,10 +21,13 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
 import Alg as cipher
 import utils
 import time
+from multiprocessing import Pool
+import argparse
 
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 results_dir = os.path.join(root_dir, 'Results')
 os.makedirs(results_dir, exist_ok=True)
+
 
 
 # takes 2d list and converts it to 1d list
@@ -55,53 +58,86 @@ def convert_2d_list(input_list):
 
     return [convert_value(value) for row in input_list for value in row]
 
+
+def draw_round_key_lines(img, line_color=128):
+    """Draw vertical lines to distinguish between round keys"""
+    pixels = img.load()
+    round_key_width = cipher.round_key_size * 8
+    
+    for round_num in range(1, cipher.round_key):
+        x_pos = round_num * round_key_width
+        for y in range(img.size[1]):
+            pixels[x_pos, y] = line_color
+
+
+def process_bit_mk_rk(bit_index):
+    """Process a single bit index for mk-rk avalanche test"""
+    # Define empty list to store result
+    result = [[0 for _ in range(cipher.round_key_size*8)] for _ in range(cipher.round_key)]
+    
+    # Generate 1000 unique keys
+    for k in range(1000):
+    
+        # Convert the counter `k` to a hexadecimal string with zero-padding
+        hex_value = ''.join(f"{(k + j) % 256:02x}" for j in range(cipher.mkey_size))
+        unique_key = f"0x{hex_value}"
+
+        mkey = utils.str_to_int_array(unique_key)
+
+        mkey_bits=utils.int_list_to_bit_list(mkey)
+
+        rkeys=cipher.key_schedule(mkey)
+
+        rkeys_bits = utils.convert_to_2d_bit_list(rkeys)
+
+        # change value of bit
+        mkey_bits[bit_index] = mkey_bits[bit_index]^1
+        # Compute new mk and rk
+        new_mkey = utils.bit_list_to_int_list(mkey_bits)
+        new_rkeys=cipher.key_schedule(new_mkey)
+        new_rkeys_bits = utils.convert_to_2d_bit_list(new_rkeys)
+        # xor new and old rk to find different bits
+        fark=utils.xor_2d_lists(rkeys_bits,new_rkeys_bits)
+        # accumilate different bits
+        result=utils.sum_2d_lists(result,fark)
+
+    return bit_index, convert_2d_list(result)
+
+
 if __name__ == "__main__":
-
-    a=time.time()
-    # PIL accesses images in Cartesian co-ordinates, so it is Image[columns, rows]
-    img = Image.new( 'L', (cipher.round_key_size*8*cipher.round_key,cipher.mkey_size*8), "black") # create a new black image
-    pixels = img.load() # create the pixel map
-
-    # for each bit in mk
-    for i in range(0,cipher.mkey_size*8):
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Run master-key to round-keys avalanche test')
+    parser.add_argument('--workers', type=int, default=None, help='Number of worker processes')
+    args = parser.parse_args()
     
-        # Define empty list to store result
-        result = [[0 for _ in range(cipher.round_key_size*8)] for _ in range(cipher.round_key)]
-        # Generate 1000 unique keys
-        for k in range(1000):
-        
-            # Convert the counter `k` to a hexadecimal string with zero-padding
-            hex_value = ''.join(f"{(k + j) % 256:02x}" for j in range(cipher.mkey_size))
-            unique_key = f"0x{hex_value}"
+    # Start timing
+    a = time.time()
     
-            mkey = utils.str_to_int_array(unique_key)
+    # Setup parallel processing
+    num_workers = args.workers if args.workers else None
+    
+    # Create output image: (round_key_bits_total, master_key_bits)
+    img = Image.new('L', 
+                    (cipher.round_key_size*8*cipher.round_key, cipher.mkey_size*8),
+                    "black")
+    pixels = img.load()
 
-            mkey_bits=utils.int_list_to_bit_list(mkey)
+    # Test each master key bit in parallel
+    bit_indices = range(cipher.mkey_size * 8)
+    
+    print(f"Testing {cipher.mkey_size*8} master key bits (key schedule) in parallel...")
+    with Pool(processes=num_workers) as pool:
+        results = pool.map(process_bit_mk_rk, bit_indices)
+    
+    # Fill in the image from results
+    for bit_index, draw_list in results:
+        for j in range(img.size[0]):
+            pixels[j, bit_index] = draw_list[j]
 
-            rkeys=cipher.key_schedule(mkey)
+    # Add visual separators
+    draw_round_key_lines(img)
 
-            rkeys_bits = utils.convert_to_2d_bit_list(rkeys)
-
-            # change value of bit
-            mkey_bits[i] = mkey_bits[i]^1
-            # Compute new mk and rk
-            new_mkey = utils.bit_list_to_int_list(mkey_bits)
-            new_rkeys=cipher.key_schedule(new_mkey)
-            new_rkeys_bits = utils.convert_to_2d_bit_list(new_rkeys)
-            # xor new and old rk to find different bits
-            fark=utils.xor_2d_lists(rkeys_bits,new_rkeys_bits)
-            # accumilate different bits
-            result=utils.sum_2d_lists(result,fark)
-
-        
-        draw_list = convert_2d_list(result)
-        
-        for j in range(img.size[0]):    # For every row
-               pixels[j,i] = (draw_list[j]) # set the colour accordingly
-        
-
+    # Save result
     img.save(os.path.join(results_dir, "aval_mk-rk.png"))
-    b=time.time()
-    print("Time of aval mk-rk: ",(b-a)/60," minutes")
-
-
+    b = time.time()
+    print(f"Time of aval mk-rk: {(b-a)/60:.2f} minutes")

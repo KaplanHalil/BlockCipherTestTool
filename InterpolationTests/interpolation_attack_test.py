@@ -285,6 +285,52 @@ def format_results(results):
     return "\n".join(lines) + "\n"
 
 
+def format_summary(results):
+    lines = []
+    lines.append("INTERPOLATION ATTACK SUMMARY")
+    lines.append("============================")
+    lines.append(f"Variable plaintext byte position: {results['variable_byte']}")
+    lines.append(f"Random sample count: {results['sample_count']}")
+    lines.append("")
+
+    all_degrees = []
+    all_weights = []
+    all_sparsities = []
+    total_bytes = 0
+
+    for round_result in results['round_results']:
+        for byte_stat in round_result['byte_stats']:
+            if byte_stat['sample_size'] > 0:
+                all_degrees.append(byte_stat['max_degree'])
+                all_weights.append(byte_stat['weight'])
+                all_sparsities.append(byte_stat['sparsity'])
+                total_bytes += 1
+
+    if total_bytes == 0:
+        lines.append("No data available for summary.")
+        return "\n".join(lines) + "\n"
+
+    avg_degree = sum(all_degrees) / len(all_degrees)
+    avg_weight = sum(all_weights) / len(all_weights)
+    avg_sparsity = sum(all_sparsities) / len(all_sparsities)
+    max_degree = max(all_degrees)
+    min_degree = min(all_degrees)
+
+    lines.append(f"Total output bytes analyzed: {total_bytes}")
+    lines.append(f"Average max polynomial degree: {avg_degree:.2f}")
+    lines.append(f"Maximum degree across all: {max_degree}")
+    lines.append(f"Minimum degree across all: {min_degree}")
+    lines.append(f"Average coefficient count: {avg_weight:.2f}")
+    lines.append(f"Average coefficient sparsity: {avg_sparsity:.3f}")
+    lines.append("")
+    lines.append("Interpretation:")
+    lines.append("- Lower average degree suggests easier algebraic modeling.")
+    lines.append("- Higher sparsity indicates fewer non-zero coefficients.")
+    lines.append("- This summary provides an overview; refer to detailed results for per-byte analysis.")
+
+    return "\n".join(lines) + "\n"
+
+
 def main():
     parser = argparse.ArgumentParser(description="Interpolation attack test using random input subspace and round outputs")
     parser.add_argument("--variable-byte", type=int, default=0,
@@ -296,7 +342,7 @@ def main():
     parser.add_argument("--workers", type=int, default=None,
                         help="Number of worker processes for parallel execution")
     parser.add_argument("--output", default=RESULT_FILE,
-                        help="Output result file")
+                        help="Output result file for detailed results")
     args = parser.parse_args()
 
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
@@ -306,10 +352,16 @@ def main():
         parallel=args.parallel,
         workers=args.workers,
     )
-    output = format_results(results)
+    detailed_output = format_results(results)
     with open(args.output, 'w', encoding='utf-8') as out:
-        out.write(output)
-    print(f"Interpolation attack analysis saved to {args.output}")
+        out.write(detailed_output)
+    print(f"Detailed interpolation attack analysis saved to {args.output}")
+
+    summary_output = format_summary(results)
+    summary_file = args.output.replace('.txt', '_summary.txt')
+    with open(summary_file, 'w', encoding='utf-8') as out:
+        out.write(summary_output)
+    print(f"Interpolation attack summary saved to {summary_file}")
 
 
 if __name__ == "__main__":
