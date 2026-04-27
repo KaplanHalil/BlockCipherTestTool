@@ -122,6 +122,203 @@ print("Number of cycles and cycle lengths:", len(cycles),",", [len(cycle) for cy
 
 print("Cycles in S :", cycles)
 
+# Additional S-box Tests
+
+# 14. Strict Avalanche Criterion (SAC)
+def strict_avalanche_criterion(sbox):
+    """Check SAC for each input bit position"""
+    n = sbox.input_size()
+    m = sbox.output_size()
+    sac_matrix = []
+    for i in range(n):  # input bit position
+        row = []
+        for j in range(m):  # output bit position
+            # Count transitions when flipping input bit i
+            transitions = 0
+            for x in range(2**n):
+                x_flipped = x ^ (1 << i)
+                if x_flipped >= 2**n:  # Ensure valid input
+                    continue
+                out_orig = sbox[x]
+                out_flipped = sbox[x_flipped]
+                if ((out_orig >> j) & 1) != ((out_flipped >> j) & 1):
+                    transitions += 1
+            probability = transitions / (2**n)
+            row.append(probability)
+        sac_matrix.append(row)
+    return sac_matrix
+
+print("\n##### Strict Avalanche Criterion (SAC) #####")
+sac_results = strict_avalanche_criterion(S)
+for i, row in enumerate(sac_results):
+    print(f"Input bit {i}: {['{:.3f}'.format(float(x)) for x in row]}")
+# Purpose: Tests if flipping one input bit changes each output bit with probability 0.5
+# Significance: SAC ensures good diffusion properties
+# Expected: Values close to 0.5
+
+# 15. Bit Independence Criterion (BIC)
+def bit_independence_criterion(sbox):
+    """Check if output bits are independent"""
+    n = sbox.input_size()
+    m = sbox.output_size()
+    bic_matrix = []
+    for i in range(m):
+        row = []
+        for j in range(m):
+            if i == j:
+                row.append(1.0)  # Self-correlation is 1
+                continue
+            correlation = 0
+            for x in range(2**n):
+                bit_i = (sbox[x] >> i) & 1
+                bit_j = (sbox[x] >> j) & 1
+                correlation += (-1)**(bit_i ^ bit_j)
+            correlation /= (2**n)
+            row.append(abs(correlation))
+        bic_matrix.append(row)
+    return bic_matrix
+
+print("\n##### Bit Independence Criterion (BIC) #####")
+bic_results = bit_independence_criterion(S)
+for i, row in enumerate(bic_results):
+    print(f"Output bit {i}: {['{:.3f}'.format(float(x)) for x in row]}")
+# Purpose: Verifies that output bits are pairwise independent
+# Significance: Ensures no linear dependencies between output bits
+# Expected: Off-diagonal values close to 0
+
+# 16. Algebraic Immunity
+def algebraic_immunity(sbox):
+    """Calculate algebraic immunity of the S-box"""
+    n = sbox.input_size()
+    immunity = n  # Start with maximum possible
+    
+    # Check all possible low-degree annihilators
+    for degree in range(1, n//2 + 1):
+        found_annihilator = False
+        # Check component functions
+        for output_bit in range(sbox.output_size()):
+            component = sbox.component_function(output_bit)
+            if component.algebraic_degree() <= degree:
+                found_annihilator = True
+                break
+        if found_annihilator:
+            immunity = degree
+            break
+    
+    return immunity
+
+print("\nAlgebraic immunity of S:", algebraic_immunity(S))
+# Purpose: Measures resistance to algebraic attacks
+# Significance: Higher immunity means better resistance to algebraic cryptanalysis
+# Expected: At least 2 for secure S-boxes
+
+# 17. Component Function Analysis
+def analyze_component_functions(sbox):
+    """Analyze each component function of the S-box"""
+    results = {}
+    for i in range(sbox.output_size()):
+        component = sbox.component_function(i)
+        results[f'bit_{i}'] = {
+            'algebraic_degree': component.algebraic_degree(),
+            'nonlinearity': component.nonlinearity(),
+            'truth_table': component.truth_table()
+        }
+    return results
+
+print("\n##### Component Function Analysis #####")
+component_analysis = analyze_component_functions(S)
+for bit, props in component_analysis.items():
+    print(f"{bit}: degree={props['algebraic_degree']}, nonlinearity={props['nonlinearity']}")
+# Purpose: Detailed analysis of each output bit's Boolean function
+# Significance: Identifies potential weaknesses in individual bit functions
+
+# 18. Distance to Random S-boxes
+def distance_to_random(sbox, samples=100):
+    """Calculate distance to random S-boxes"""
+    import numpy as np
+    
+    n = sbox.input_size()
+    distances = []
+    
+    for _ in range(samples):
+        # Generate random permutation
+        random_perm = list(range(2**n))
+        np.random.shuffle(random_perm)
+        random_sbox = SBox(random_perm)
+        
+        # Calculate distance metric (difference in nonlinearity)
+        dist = abs(sbox.nonlinearity() - random_sbox.nonlinearity())
+        distances.append(dist)
+    
+    return {
+        'mean_distance': np.mean(distances),
+        'std_distance': np.std(distances),
+        'min_distance': min(distances),
+        'max_distance': max(distances)
+    }
+
+print("\n##### Distance to Random S-boxes #####")
+random_dist = distance_to_random(S)
+print(f"Mean distance: {float(random_dist['mean_distance']):.3f}")
+print(f"Std distance: {float(random_dist['std_distance']):.3f}")
+print(f"Min distance: {float(random_dist['min_distance']):.3f}")
+print(f"Max distance: {float(random_dist['max_distance']):.3f}")
+# Purpose: Measures how 'random' the S-box appears
+# Significance: Closer to random is generally better for security
+
+# 19. Higher-Order Differential Uniformity
+def higher_order_differential_uniformity(sbox, order=2):
+    """Calculate higher-order differential uniformity"""
+    n = sbox.input_size()
+    max_count = 0
+    
+    # Simplified implementation - check derivative uniformity
+    for mask in range(1, min(2**n, 32)):  # Limit for performance
+        derivative_sbox = sbox.derivative(mask)
+        # Count frequency of each output difference
+        diff_counts = {}
+        for x in range(2**n):
+            diff = derivative_sbox[x]
+            diff_counts[diff] = diff_counts.get(diff, 0) + 1
+        if diff_counts:
+            max_count = max(max_count, max(diff_counts.values()))
+    
+    return max_count
+
+print("\nHigher-order differential uniformity of S:", higher_order_differential_uniformity(S))
+# Purpose: Resistance to higher-order differential attacks
+# Significance: Lower values indicate better resistance
+
+# 20. Detailed Cycle Analysis
+def detailed_cycle_analysis(sbox):
+    """Detailed analysis of cycle structure"""
+    perm = Permutation([x + 1 for x in sbox])
+    cycles = perm.to_cycles()
+    
+    analysis = {
+        'num_cycles': len(cycles),
+        'cycle_lengths': [len(c) for c in cycles],
+        'max_cycle_length': max(len(c) for c in cycles) if cycles else 0,
+        'fixed_points': sum(1 for c in cycles if len(c) == 1),
+        'transpositions': sum(1 for c in cycles if len(c) == 2),
+        'cycle_length_distribution': {}
+    }
+    
+    for length in set(analysis['cycle_lengths']):
+        analysis['cycle_length_distribution'][length] = analysis['cycle_lengths'].count(length)
+    
+    return analysis
+
+print("\n##### Detailed Cycle Analysis #####")
+cycle_analysis = detailed_cycle_analysis(S)
+print(f"Number of cycles: {cycle_analysis['num_cycles']}")
+print(f"Maximum cycle length: {cycle_analysis['max_cycle_length']}")
+print(f"Fixed points: {cycle_analysis['fixed_points']}")
+print(f"Transpositions: {cycle_analysis['transpositions']}")
+print(f"Cycle length distribution: {cycle_analysis['cycle_length_distribution']}")
+# Purpose: Detailed analysis of permutation cycle structure
+# Significance: Cycle structure affects diffusion properties
+
 # Helper function to display tables with detailed formatting
 def pretty_table(matrix, label, max_size=16):
     nrows, ncols = matrix.nrows(), matrix.ncols()

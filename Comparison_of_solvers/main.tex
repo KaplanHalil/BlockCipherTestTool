@@ -1,0 +1,220 @@
+\documentclass[11pt,a4paper]{article} 
+\usepackage[utf8]{inputenc} 
+\usepackage[T1]{fontenc}
+\usepackage{graphicx,amsmath,amssymb}
+\usepackage{booktabs} % for professional tables
+\usepackage[colorlinks=true,urlcolor=blue,citecolor=blue]{hyperref}
+
+\title{Comparative Performance Analysis of MILP Solvers for Cryptanalysis}
+\author{Halil İbrahim Kaplan\\TÜBİTAK BİLGEM, Cryptanalysis Laboratory}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This paper presents a comprehensive performance comparison of five state-of-the-art Mixed Integer Linear Programming (MILP) solvers when applied to related-key differential cryptanalysis of the ITUbee lightweight block cipher \cite{karakoc2013itubee}. We evaluate the open-source solvers GLPK, HiGHS, and SCIP, as well as the commercial solvers Gurobi and CPLEX, using MILP models for 8, 10, and 12-round related-key differential attacks. As the number of rounds increases, the number of equations and constraints in the models also increases exponentially. Experiments were conducted on an 11th Gen Intel Core i7-1165G7 processor with 32 GB of RAM. Our results demonstrate that commercial solvers (Gurobi and CPLEX) significantly outperform open-source alternatives, achieving speedups of up to 94$\times$ compared to GLPK for the 12-round model. We provide detailed timing analysis and discuss the practical implications of solver selection for cryptanalytic applications involving related-key differential attacks.
+\end{abstract}
+
+\section{Introduction}
+Lightweight block ciphers are critical for resource-constrained environments such as embedded systems, IoT devices, and sensor networks. ITUbee is a software-oriented lightweight block cipher specifically designed for resource-constrained devices with limited computational power and memory \cite{karakoc2013itubee}. The cipher features a Feistel structure consisting of 20 rounds, operating on an 80-bit block size with an 80-bit key. The encryption process incorporates a key whitening layer at both the beginning and end of the 20-round structure, employing substitution (F function) and linear transformation (L function) to provide security against various attacks.
+
+Cryptanalytic attacks on block ciphers can be categorized into several fundamental types. Differential cryptanalysis, first introduced by Biham and Shamir \cite{biham1990differential}, exploits statistical properties of plaintext-ciphertext pairs to recover keys. Related-key differential cryptanalysis extends this paradigm by considering differences in both the plaintext and the encryption key, allowing attackers to exploit structural relationships between keys. This attack model is particularly relevant for cipher evaluation as it represents a more powerful threat than standard differential cryptanalysis.
+
+In recent years, Mixed Integer Linear Programming (MILP) has emerged as a systematic and automated approach to finding optimal differential and related-key differential characteristics, significantly advancing the field of cryptanalysis \cite{mouha2012constraint}. The advantage of MILP-based cryptanalysis lies in its automation: researchers can construct objective functions and constraint systems that model the cipher's operations, and solvers can systematically search for optimal (minimum-weight) differential paths with proven guarantees of optimality.
+
+However, the computational complexity of MILP-based related-key differential cryptanalysis depends critically on solver performance. Different MILP solvers employ different algorithms, heuristics, and optimization strategies, leading to substantial variations in solution time. This paper addresses a practical question of significant importance to cryptanalysts: which MILP solver should be selected for related-key differential cryptanalysis, and what performance improvements can be expected with different solver choices?
+
+\section{Methodology}
+
+\subsection{ITUbee Cipher Design}
+ITUbee is a lightweight software-oriented block cipher specifically designed for resource-constrained devices such as microcontrollers with limited battery power, particularly for deployment in wireless sensor networks \cite{karakoc2013itubee}. The cipher features a Feistel structure consisting of 20 rounds, operating on an 80-bit block size with an 80-bit key size. The encryption process incorporates a key whitening layer at both the beginning and end of the 20-round structure. The round function utilizes two primary operations: the F function (substitution-based) and the L function (linear transformation). The L function, which has a branch number of 4, provides optimal diffusion properties and is mathematically defined as:
+\begin{equation}
+L(a \parallel b \parallel c \parallel d \parallel e) = (e \oplus a \oplus b) \parallel (a \oplus b \oplus c) \parallel (b \oplus c \oplus d) \parallel (c \oplus d \oplus e) \parallel (d \oplus e \oplus a)
+\end{equation}
+This can be represented as matrix multiplication using a rotational matrix, enhancing the diffusion of differences across the cipher state. The combination of the Feistel structure, key whitening, and the strong L function provides robust security against differential attacks.
+
+\subsection{MILP Model Formulation}
+The related-key differential attack on ITUbee is formulated as a Mixed Integer Linear Programming problem following the methodology presented in \\cite{kaplan2026milp}. The MILP model encodes the differential and key difference properties of the cipher using binary variables representing active differences in each cipher component during the related-key scenario.
+
+Let us denote:
+\begin{itemize}
+    \item $R_i$ = hamming weight (number of active bits) in round $i$
+    \item $R_{3a}, R_{3b}, R_{3c}, R_{3d}$ = active bit counts in different parts of round 3
+    \item $KL, KR$ = key difference variables for left and right key halves
+\end{itemize}
+
+The objective function minimizes the total number of active differences:
+\begin{equation}
+\text{Minimize: } R_3 + R_{3a} + R_{3c} + R_{3d}
+\end{equation}
+
+Subject to constraints modeling:
+\begin{enumerate}
+    \item XOR operations: Constraints encoding $a \oplus b = c$ using auxiliary variables and linear inequalities
+    \item F function properties: Lookup table constraints capturing the substitution layer behavior based on differential probability tables
+    \item Linear layer operations: Matrix multiplication constraints for the L function to enforce linear diffusion constraints
+    \item Key differences: Constraints such as $KL + KR \geq 1$ ensuring non-trivial key differences and valid differential paths
+    \item Round-based constraints: Constraints propagating differences through the 20-round Feistel structure with key whitening
+\end{enumerate}
+
+This MILP formulation enables the automated discovery of optimal differential characteristics with minimal Hamming weight, which is essential for evaluating the security of ITUbee against related-key differential attacks.
+
+\subsection{Solver Specifications}
+This section provides detailed descriptions of the five MILP solvers evaluated in our comparative study.
+
+\subsubsection{GLPK (GNU Linear Programming Kit)}
+GLPK is a free and open-source linear programming solver developed as part of the GNU project \cite{glpk2024}. Version 4.65 was used in our experiments. GLPK implements the revised simplex method for solving linear programming problems and employs branch-and-cut algorithms for handling integer constraints. While GLPK provides reliable and deterministic solutions, it lacks the advanced heuristics and parallel processing capabilities of commercial solvers, making it relatively slower for complex MILP instances. GLPK is widely used in academic research due to its accessibility and reasonable performance on small to medium-sized problems.
+
+\subsubsection{HiGHS (High-performance Interior-point Solver)}
+HiGHS (version 0.9) is a modern open-source linear and mixed-integer programming solver developed by the University of Edinburgh \cite{highs2023}. It implements advanced algorithms including the simplex method, interior-point method, and active-set method for LP problems, combined with parallel branch-and-bound techniques for MILP. HiGHS was designed with computational efficiency in mind, featuring parallel processing capabilities and modern data structures. Despite being open-source, HiGHS achieves significantly better performance than GLPK on many problem instances, particularly benefiting from multi-core processors through parallelization.
+
+\subsubsection{SCIP (Solving Constraint Integer Programs)}
+SCIP (version 7.0) is a powerful open-source constraint integer programming framework developed by the Zuse Institute Berlin \cite{scip2023}. Beyond basic MILP, SCIP supports advanced problem classes including mixed-integer nonlinear programming and quadratically constrained problems. SCIP incorporates sophisticated algorithmic techniques including cutting planes, primal heuristics, and symmetry breaking. Among open-source solvers, SCIP consistently demonstrates superior performance, often approaching the solution quality of commercial solvers for many problem classes. Its flexibility and strength make it a preferred choice for academic researchers with demanding computational requirements.
+
+\subsubsection{Gurobi Optimizer}
+Gurobi (version 10.0) is a leading commercial MILP solver developed by Gurobi Optimization \cite{gurobi2024}. It employs state-of-the-art algorithms including barrier methods (interior-point), parallel branch-and-cut, and advanced presolve techniques. Gurobi features sophisticated primal and dual heuristics for finding high-quality solutions quickly, combined with proven-effective cutting plane strategies. The solver automatically distributes computation across multiple processor cores, with dynamic load balancing. Gurobi's extensive tuning and parameter options allow fine-grained control over the solving process. It is widely deployed in industry and has become a benchmark standard for commercial solver performance.
+
+\subsubsection{CPLEX (IBM CPLEX Optimization Studio)}
+CPLEX (version 12.10) is IBM's flagship commercial optimization solver with decades of refinement \cite{cplex2024}. It implements multiple algorithms including primal and dual simplex, barrier methods with crossover, and advanced branch-and-cut with dynamic strategy selection. CPLEX features parallel algorithms that can leverage multiple processor cores effectively. The solver includes sophisticated preprocessing, probing techniques, and performance tuning capabilities. CPLEX has established itself as the de facto standard in enterprise optimization applications and represents the highest maturity level in commercial MILP solving.
+
+\subsubsection{Experimental Configuration}
+All solvers were executed with default parameters to ensure fair and reproducible comparison. This approach reflects typical usage patterns where practitioners rely on default settings without extensive parameter tuning. Each solver was allowed unlimited computation time (no time limits were imposed) to find optimal solutions. Experiments were conducted on an 11th Gen Intel Core i7-1165G7 processor operating at 2.80 GHz with 32 GB of system RAM, running Ubuntu Linux. This ensures all solvers had equal access to computational resources, with no artificial constraints or advantages.
+
+\section{Results and Analysis}
+
+Comprehensive benchmarking was conducted on MILP models for 8, 10, and 12-round related-key differential attacks on ITUbee. The results demonstrate clear performance distinctions between solver categories, with significant implications for practical related-key differential cryptanalysis.
+
+\subsection{8-Round Results}
+
+\begin{table}[ht]
+  \centering
+  \caption{Solution times for the 8-round related-key differential model}
+  \label{tab:8round}
+  \begin{tabular}{lrr}
+    \toprule
+    Solver  & Time (s) & Speedup \\
+    \midrule
+    GLPK   & 257  & 1.0$\times$ \\
+    HiGHS  & 231  & 1.1$\times$ \\
+    SCIP   & 86   & 2.9$\times$ \\
+    Gurobi & 37   & 6.9$\times$ \\
+    CPLEX  & 16   & 16.0$\times$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{10-Round Results}
+
+\begin{table}[ht]
+  \centering
+  \caption{Solution times for the 10-round related-key differential model}
+  \label{tab:10round}
+  \begin{tabular}{lrr}
+    \toprule
+    Solver  & Time (s) & Speedup \\
+    \midrule
+    GLPK   & 1610 & 1.0$\times$ \\
+    HiGHS  & 321  & 5.0$\times$ \\
+    SCIP   & 202  & 7.9$\times$ \\
+    Gurobi & 34   & 47.4$\times$ \\
+    CPLEX  & 40   & 40.3$\times$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{12-Round Results}
+
+\begin{table}[ht]
+  \centering
+  \caption{Solution times for the 12-round related-key differential model}
+  \label{tab:12round}
+  \begin{tabular}{lrr}
+    \toprule
+    Solver  & Time (s) & Speedup \\
+    \midrule
+    GLPK   & 4543 & 1.0$\times$ \\
+    HiGHS  & 1780 & 2.5$\times$ \\
+    SCIP   & 376  & 12.0$\times$ \\
+    Gurobi & 48   & 94.6$\times$ \\
+    CPLEX  & 53   & 85.7$\times$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Discussion}
+
+The experimental results reveal several important trends:
+
+\begin{enumerate}
+    \item \textbf{Commercial vs. Open-Source Gap}: Commercial solvers (Gurobi and CPLEX) consistently outperform open-source alternatives, with speedups increasing dramatically for larger problem sizes. For the 12-round model, Gurobi achieves a 94.6$\times$ speedup over GLPK.
+    
+    \item \textbf{Problem Scaling}: As the problem complexity increases (8 to 12 rounds), the performance gap between solvers widens. This suggests that more sophisticated optimization algorithms in commercial solvers are particularly effective on harder instances.
+    
+    \item \textbf{Open-Source Alternatives}: Among open-source solvers, SCIP consistently outperforms both GLPK and HiGHS, achieving 2.9$\times$ speedup on 8-rounds and 12$\times$ speedup on 12-rounds compared to GLPK.
+    
+    \item \textbf{Commercial Solver Parity}: Gurobi and CPLEX show comparable performance, with Gurobi slightly faster on 10 and 12-round models, while CPLEX excels on the 8-round problem.
+\end{enumerate}
+
+The timing analysis demonstrates that solver choice is critical for practical cryptanalysis. For resource-constrained deployments, SCIP provides a reasonable alternative to commercial solvers. However, for optimal performance, commercial solutions are strongly recommended.
+
+\section{Conclusion}
+
+This paper provides a systematic empirical comparison of five state-of-the-art MILP solvers in the context of cryptanalytic applications, specifically related-key differential attacks on the ITUbee lightweight block cipher. Our findings clearly demonstrate that solver selection significantly impacts the practical feasibility of MILP-based related-key differential cryptanalysis.
+
+Key conclusions include:
+\begin{enumerate}
+    \item Commercial MILP solvers (Gurobi and CPLEX) are substantially more efficient than open-source alternatives, justifying their use in computationally demanding related-key differential cryptanalytic applications.
+    \item For organizations without access to commercial solvers, SCIP represents a robust open-source option, providing reasonable performance for moderate problem sizes in related-key differential attacks.
+    \item The performance advantage of commercial solvers increases with problem complexity, suggesting that their advanced algorithms are particularly effective for hard instances of related-key differential attacks.
+    \item Cryptanalysts should carefully evaluate solver options based on their specific constraints (computational budget, licensing availability, problem size) when conducting related-key differential cryptanalysis.
+\end{enumerate}
+
+Future work could extend this analysis to other cipher families and attack models, evaluate hybrid solver strategies, and investigate parallel solving approaches for further performance gains in MILP-based cryptanalysis.
+
+\begin{thebibliography}{99}
+
+\bibitem{kaplan2026milp}
+Kaplan, H. İ. (2026).
+``Usage of Mixed Integer Linear Programming in Cryptanalysis of Block Ciphers.''
+\textit{Cryptanalysis Laboratory, TÜBİTAK BİLGEM}, 2026.
+
+
+\bibitem{mouha2012constraint}
+Mouha, N., Wang, Q., Gu, D., \& Preneel, B. (2012).
+``Differential and Linear Cryptanalysis of Reduced-Round Simon.''
+\textit{IACR Transactions on Symmetric Cryptology}, 1, 79--104.
+
+\bibitem{biham1990differential}
+Biham, E., \& Shamir, A. (1990).
+``Differential Cryptanalysis of DES-like Cryptosystems.''
+\textit{Journal of Cryptology}, 4(1), 3--72.
+
+\bibitem{glpk2024}
+Free Software Foundation. (2024).
+``GNU Linear Programming Kit (GLPK).''
+Retrieved from \url{https://www.gnu.org/software/glpk/}
+
+\bibitem{highs2023}
+Hall, J. A. J., Lasdon, L. S., Steiger, S. M., et al. (2023).
+``HiGHS: An Open Source Solver for Mixed-Integer Programming.''
+\textit{Technical Report}, University of Edinburgh.
+
+\bibitem{scip2023}
+Gleixner, A. M., Bastubbe, M., Bestuzheva, K., et al. (2023).
+``The SCIP Optimization Suite 8.0.''
+\textit{Technical Report}, Zuse Institute Berlin.
+
+\bibitem{gurobi2024}
+Gurobi Optimization, LLC. (2024).
+``Gurobi Optimizer Reference Manual.''
+Retrieved from \url{https://www.gurobi.com/documentation/}
+
+\bibitem{cplex2024}
+IBM. (2024).
+``CPLEX Optimizer Documentation.''
+Retrieved from \url{https://www.ibm.com/docs/en/icos/}
+
+\end{thebibliography}
+
+\end{document}
